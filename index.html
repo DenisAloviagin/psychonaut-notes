@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Заметки психонавта</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -10,7 +10,11 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { background: #f5f3f0; font-family: 'Montserrat', sans-serif; }
+      body {
+        background: #c0c0c0;
+        font-family: 'Montserrat', sans-serif;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
       #root { width: 100%; min-height: 100vh; }
     </style>
   </head>
