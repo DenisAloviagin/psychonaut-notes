@@ -154,7 +154,7 @@ const css = `
     border-radius: 0 !important;
   }
   html, body { overflow-x: hidden; }
-  body { background: var(--surface); color:#000; font-size:13px; line-height:1.45; }
+  body { background: var(--surface); color:#000; font-size:13px; line-height:1.45; font-family:'Montserrat', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
   textarea, input:not([type=range]), select {
     width:100%; font-size:13px; color:#000; background:#fff;
     border:none; box-shadow: var(--sunken); padding:5px 7px; outline:none; resize:none;
