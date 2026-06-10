@@ -1,9 +1,60 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ── Backend (Render) ──────────────────────────────────────────────────────────
 const API_BASE = "https://psychonaut-notes-backend.onrender.com";
 const tgInitData = () =>
   (typeof window !== "undefined" && window.Telegram?.WebApp?.initData) || "";
+
+// ── Persistent storage (Telegram CloudStorage с фолбэком на localStorage) ─────
+const NOTE_PREFIX = "psy_note_";
+const INDEX_KEY = "psy_index";
+const PREMIUM_KEY = "psy_premium";
+
+function tgCloud() {
+  return (typeof window !== "undefined" && window.Telegram?.WebApp?.CloudStorage) || null;
+}
+function storeGet(key) {
+  return new Promise((resolve) => {
+    const c = tgCloud();
+    if (c) {
+      try { c.getItem(key, (err, val) => resolve(err ? null : (val || null))); }
+      catch { resolve(null); }
+    } else {
+      try { resolve(localStorage.getItem(key)); } catch { resolve(null); }
+    }
+  });
+}
+function storeSet(key, value) {
+  return new Promise((resolve) => {
+    const c = tgCloud();
+    if (c) {
+      try { c.setItem(key, value, (err, ok) => resolve(!err && !!ok)); }
+      catch { resolve(false); }
+    } else {
+      try { localStorage.setItem(key, value); resolve(true); } catch { resolve(false); }
+    }
+  });
+}
+function storeRemove(key) {
+  return new Promise((resolve) => {
+    const c = tgCloud();
+    if (c) {
+      try { c.removeItem(key, () => resolve(true)); } catch { resolve(true); }
+    } else {
+      try { localStorage.removeItem(key); resolve(true); } catch { resolve(true); }
+    }
+  });
+}
+function storeKeys() {
+  return new Promise((resolve) => {
+    const c = tgCloud();
+    if (c && c.getKeys) {
+      try { c.getKeys((err, keys) => resolve(err ? [] : (keys || []))); } catch { resolve([]); }
+    } else {
+      try { resolve(Object.keys(localStorage)); } catch { resolve([]); }
+    }
+  });
+}
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const T = {
@@ -1875,7 +1926,7 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis }) {
         </div>
         <div style={{ fontSize:11, color:T.muted, marginBottom:16, fontFamily:"'Montserrat', sans-serif",
           background:T.bg, borderRadius:8, padding:"8px 12px", lineHeight:1.6 }}>
-          🔒 Для анализа данные временно отправляются к Claude API и нигде не сохраняются.
+          🔒 Для анализа текст сессии уходит на наш сервер и к Claude, чтобы сгенерировать ответ. На сервере он не сохраняется.
         </div>
         <Btn onClick={onUpgrade}>Открыть за 999 ⭐</Btn>
       </div>
@@ -1904,7 +1955,7 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis }) {
             </div>
             <div style={{ fontSize:11, color:T.muted, lineHeight:1.6, marginBottom:14,
               fontFamily:"'Montserrat', sans-serif", background:T.bg, borderRadius:8, padding:"8px 12px" }}>
-              🔒 Данные временно отправляются к Claude API только для генерации ответа. Нигде не сохраняются на внешних серверах.
+              🔒 Для анализа текст сессии уходит на наш сервер и к Claude только для генерации ответа. На нашем сервере он не сохраняется, а сами заметки остаются в твоём Telegram.
             </div>
             <Btn onClick={handleAnalyze}>Запустить анализ</Btn>
           </Card>
@@ -3555,6 +3606,68 @@ export default function App() {
   });
   const [activeFacet, setActiveFacet] = useState(null);
   const [draftId, setDraftId] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const persistedRef = useRef({});
+
+  // Загрузка сессий и факта оплаты из хранилища при старте
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const idxRaw = await storeGet(INDEX_KEY);
+        let ids = [];
+        if (idxRaw) { try { ids = JSON.parse(idxRaw) || []; } catch { ids = []; } }
+        const arr = [];
+        for (const id of ids) {
+          const raw = await storeGet(NOTE_PREFIX + id);
+          if (raw) {
+            try { const sn = JSON.parse(raw); arr.push(sn); persistedRef.current[String(sn.id)] = raw; }
+            catch {}
+          }
+        }
+        if (!cancelled) {
+          if (arr.length) setSessions(arr);
+          // Сдвигаем счётчик id за максимальный сохранённый, чтобы не затирать старые сессии
+          const maxId = arr.reduce((m, sn) => (typeof sn.id === "number" && sn.id > m ? sn.id : m), nextId);
+          nextId = maxId;
+          const prem = await storeGet(PREMIUM_KEY);
+          if (prem === "1") setIsPremium(true);
+        }
+      } catch {}
+      if (!cancelled) setLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Сохранение сессий при любом изменении (только после загрузки)
+  useEffect(() => {
+    if (!loaded) return;
+    (async () => {
+      const ids = sessions.map(s => s.id);
+      await storeSet(INDEX_KEY, JSON.stringify(ids));
+      for (const s of sessions) {
+        const json = JSON.stringify(s);
+        if (persistedRef.current[String(s.id)] !== json) {
+          const ok = await storeSet(NOTE_PREFIX + s.id, json);
+          if (ok) persistedRef.current[String(s.id)] = json;
+        }
+      }
+      const idStrs = ids.map(String);
+      const keys = await storeKeys();
+      for (const k of keys) {
+        if (k.indexOf(NOTE_PREFIX) === 0) {
+          const kid = k.slice(NOTE_PREFIX.length);
+          if (!idStrs.includes(kid)) { await storeRemove(k); delete persistedRef.current[kid]; }
+        }
+      }
+    })();
+  }, [sessions, loaded]);
+
+  // Сохранение факта оплаты
+  useEffect(() => {
+    if (!loaded) return;
+    storeSet(PREMIUM_KEY, isPremium ? "1" : "");
+  }, [isPremium, loaded]);
 
   // Simple flow data save — just updates React state and sessionStorage
   const saveFlowData = (data) => {
