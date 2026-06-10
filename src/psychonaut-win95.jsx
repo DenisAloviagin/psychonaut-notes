@@ -622,9 +622,10 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy }) {
         <div onClick={() => setMenuOpen(false)} style={{ position:"fixed", inset:0, zIndex:140 }} />
       )}
       <nav style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:480, margin:"0 auto",
-        background:"var(--surface)", boxShadow:"inset 0 1px #fff, inset 0 2px #dfdfdf",
-        borderTop:"1px solid #808080", display:"flex", alignItems:"stretch", gap:3, padding:3, zIndex:150,
+        background:"#008080", zIndex:150,
         paddingBottom:"calc(3px + env(safe-area-inset-bottom))" }}>
+        <div style={{ background:"var(--surface)", boxShadow:"inset 0 1px #fff, inset 0 2px #dfdfdf",
+          borderTop:"1px solid #808080", display:"flex", alignItems:"stretch", gap:3, padding:3 }}>
 
         <div style={{ position:"relative", flex:"0 0 auto", display:"flex" }}>
           <button onClick={() => setMenuOpen(o => !o)} style={{ display:"flex", alignItems:"center", gap:5,
@@ -675,6 +676,7 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy }) {
 
         <div style={{ flex:"0 0 auto", display:"flex", alignItems:"center", padding:"0 8px",
           background:"var(--surface)", boxShadow:"var(--sunken)", fontSize:12, color:"#000" }}>{time}</div>
+        </div>
       </nav>
 
       {about && (
