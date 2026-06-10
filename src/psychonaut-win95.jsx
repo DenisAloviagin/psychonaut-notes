@@ -197,13 +197,13 @@ function AccentBar() {
     <>
       <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:300,
         maxWidth:480, margin:"0 auto", background:"var(--surface)", boxShadow:"var(--raised)", padding:3 }}>
-        <div style={{ background:"var(--titlebar)", color:"#fff", fontWeight:700, fontSize:13,
+        <div style={{ background:"var(--titlebar)", color:"#fff", fontWeight:700, fontSize:12,
           display:"flex", alignItems:"center", justifyContent:"space-between", padding:"3px 4px 3px 6px" }}>
-          <span style={{ display:"flex", alignItems:"center", gap:6 }}>
-            <span style={{ width:14, height:14, background:"var(--surface)", boxShadow:"var(--raised)", display:"inline-block" }} />
+          <span style={{ display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", minWidth:0, overflow:"hidden" }}>
+            <span style={{ width:14, height:14, background:"var(--surface)", boxShadow:"var(--raised)", display:"inline-block", flexShrink:0 }} />
             Заметки психонавта
           </span>
-          <span style={{ display:"flex", gap:2 }}>
+          <span style={{ display:"flex", gap:2, flexShrink:0 }}>
             {["_","\u25A1","\u2715"].map((c,i)=>(
               <button key={i} onClick={actions[c]} style={{ width:18, height:15, background:"var(--surface)", boxShadow:"var(--raised)",
                 color:"#000", fontSize:10, fontWeight:700, lineHeight:"13px", textAlign:"center", border:"none", padding:0, cursor:"pointer" }}>{c}</button>
@@ -669,7 +669,7 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy }) {
             background:"var(--surface)", boxShadow: active===id ? "var(--sunken)" : "var(--raised)",
             color: active===id ? "#000080" : "#000", fontSize:8, fontWeight:700,
             letterSpacing:"0.02em", textTransform:"uppercase" }}>
-            {icon}<span style={{ maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{label}</span>
+            {icon}<span style={{ maxWidth:"100%", lineHeight:1.05, textAlign:"center", wordBreak:"break-word" }}>{label}</span>
           </button>
         ))}
 
