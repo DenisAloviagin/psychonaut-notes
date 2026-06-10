@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
 
+// ── Backend (Render) ──────────────────────────────────────────────────────────
+const API_BASE = "https://psychonaut-notes-backend.onrender.com";
+const tgInitData = () =>
+  (typeof window !== "undefined" && window.Telegram?.WebApp?.initData) || "";
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const T = {
   accent: "#000080",
@@ -1318,21 +1323,14 @@ function IntegrationAnalysis({ data, isPremium, onUpgrade }) {
 ЗАПИСИ ИНТЕГРАЦИИ:
 ${entries}`;
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch(`${API_BASE}/analyze`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, initData: tgInitData() }),
       });
       if (!response.ok) throw new Error("API error");
       const json = await response.json();
-      const text = json.content?.[0]?.text || "Не удалось получить анализ.";
+      const text = json.text || "Не удалось получить анализ.";
       setResult(text);
       data.integrationAnalysis = text;
       setStatus("done");
@@ -1799,21 +1797,14 @@ ${facetLabels[k]}: ${v}`;
 }
 
 async function runAnalysis(session) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch(`${API_BASE}/analyze`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: buildPrompt(session) }],
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: buildPrompt(session), initData: tgInitData() }),
   });
   if (!response.ok) throw new Error("API error");
   const data = await response.json();
-  return data.content?.[0]?.text || "Не удалось получить анализ.";
+  return data.text || "Не удалось получить анализ.";
 }
 
 
@@ -3651,21 +3642,13 @@ ${facetTexts}
 
 Где N — целое число от 1 до 10. Если по какой-то области записей нет — поставь 5.`;
 
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch(`${API_BASE}/ratings`, {
         method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "anthropic-dangerous-direct-browser-access":"true",
-        },
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514",
-          max_tokens:100,
-          messages:[{ role:"user", content: prompt }]
-        })
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ prompt, initData: tgInitData() })
       });
       const data = await res.json();
-      const text = data.content?.[0]?.text || "{}";
-      const claudeRatings = JSON.parse(text.replace(/```json|```/g,"").trim());
+      const claudeRatings = data.ratings || data;
       s.claudeRatings = claudeRatings;
     } catch(e) { /* silent fail — no Claude ratings */ }
 
