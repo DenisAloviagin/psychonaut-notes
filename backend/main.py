@@ -5,13 +5,15 @@ import json
 from urllib.parse import parse_qsl
 
 import httpx
+import psycopg
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# ── Конфигурация из переменных окружения Render ──────────────────────────────
+# ── Конфигурация из переменных окружения Render ─────────────────────────────────
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 # Проверку подписи можно временно выключить для отладки: VERIFY_INIT_DATA=false
 VERIFY_INIT_DATA = os.environ.get("VERIFY_INIT_DATA", "true").lower() != "false"
 
@@ -20,7 +22,7 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 
 app = FastAPI()
 
-# ── CORS: разрешаем фронту на Vercel обращаться к серверу ────────────────────
+# ── CORS: разрешаем фронту на Vercel обращаться к серверу ───────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -31,7 +33,46 @@ app.add_middleware(
 )
 
 
-# ── Верификация подписи Telegram WebApp ──────────────────────────────────────
+# ── База данных: создание таблицы оплат при старте ──────────────────────────────
+def init_db() -> None:
+    if not DATABASE_URL:
+        print("DATABASE_URL not set, skipping DB init")
+        return
+    try:
+        with psycopg.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS payments (
+                        id                          BIGSERIAL   PRIMARY KEY,
+                        telegram_user_id            BIGINT      NOT NULL,
+                        telegram_payment_charge_id  TEXT        NOT NULL UNIQUE,
+                        stars_amount                INTEGER     NOT NULL,
+                        created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        refunded                    BOOLEAN     NOT NULL DEFAULT FALSE,
+                        refunded_at                 TIMESTAMPTZ
+                    );
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_payments_user_active
+                        ON payments (telegram_user_id)
+                        WHERE refunded = FALSE;
+                    """
+                )
+            conn.commit()
+        print("DB init OK: table payments is ready")
+    except Exception as e:
+        print(f"DB init error: {e}")
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    init_db()
+
+
+# ── Верификация подписи Telegram WebApp ─────────────────────────────────────────
 def verify_init_data(init_data: str) -> bool:
     if not VERIFY_INIT_DATA:
         return True
@@ -56,7 +97,7 @@ def verify_init_data(init_data: str) -> bool:
         return False
 
 
-# ── Запрос к Claude ──────────────────────────────────────────────────────────
+# ── Запрос к Claude ─────────────────────────────────────────────────────────────
 async def ask_claude(prompt: str, max_tokens: int) -> str:
     if not CLAUDE_API_KEY:
         raise HTTPException(status_code=500, detail="CLAUDE_API_KEY not set")
@@ -81,16 +122,31 @@ async def ask_claude(prompt: str, max_tokens: int) -> str:
     return ""
 
 
-# ── Модель тела запроса ───────────────────────────────────────────────────────
+# ── Модель тела запроса ─────────────────────────────────────────────────────────
 class AnalyzeRequest(BaseModel):
     prompt: str
     initData: str = ""
 
 
-# ── Эндпоинты ─────────────────────────────────────────────────────────────────
+# ── Эндпоинты ───────────────────────────────────────────────────────────────────
 @app.get("/")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/db-health")
+def db_health():
+    if not DATABASE_URL:
+        return {"db": "no DATABASE_URL"}
+    try:
+        with psycopg.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM payments;")
+                row = cur.fetchone()
+        count = row[0] if row else 0
+        return {"db": "ok", "payments_rows": count}
+    except Exception as e:
+        return {"db": "error", "detail": str(e)}
 
 
 @app.post("/analyze")
