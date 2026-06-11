@@ -56,6 +56,18 @@ function storeKeys() {
   });
 }
 
+// ── Emoji через Twemoji (цветные картинки вместо чёрных системных) ────────────
+function Emoji({ char, size = 18 }) {
+  const tw = (typeof window !== "undefined" && window.twemoji) ? window.twemoji : null;
+  const html = tw ? tw.parse(char, { folder: "svg", ext: ".svg" }) : char;
+  return (
+    <span
+      style={{ fontSize: size, lineHeight: 0, display: "inline-flex", flexShrink: 0 }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const T = {
   accent: "#000080",
@@ -165,6 +177,7 @@ const css = `
   input[type=range]::-moz-range-track{ height:4px; background:#808080; box-shadow: inset 1px 1px #000, inset -1px -1px #fff; }
   input[type=range]::-moz-range-thumb{ width:11px; height:21px; background:#c0c0c0; box-shadow:var(--raised); border:none; }
   button { font-family: inherit; cursor:pointer; }
+  img.emoji { width:1em; height:1em; display:inline-block; vertical-align:middle; margin:0; }
   ::selection{ background:#000080; color:#fff; }
   ::-webkit-scrollbar{ width:15px; height:15px; }
   ::-webkit-scrollbar-track{ background:#dfdfdf; box-shadow: inset 1px 1px #808080, inset -1px -1px #fff; }
@@ -205,8 +218,8 @@ function AccentBar() {
           </span>
           <span style={{ display:"flex", gap:2, flexShrink:0 }}>
             {["_","\u25A1","\u2715"].map((c,i)=>(
-              <button key={i} onClick={actions[c]} style={{ width:18, height:15, background:"var(--surface)", boxShadow:"var(--raised)",
-                color:"#000", fontSize:10, fontWeight:700, lineHeight:"13px", textAlign:"center", border:"none", padding:0, cursor:"pointer" }}>{c}</button>
+              <button key={i} onClick={actions[c]} style={{ flex:"0 0 auto", width:30, minWidth:30, maxWidth:30, height:18, boxSizing:"border-box", background:"var(--surface)", boxShadow:"var(--raised)",
+                color:"#000", fontSize:11, fontWeight:700, lineHeight:"16px", textAlign:"center", border:"none", padding:0, cursor:"pointer" }}>{c}</button>
             ))}
           </span>
         </div>
@@ -667,9 +680,9 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy }) {
           <button key={id} onClick={() => onChange(id)} style={{ flex:1, minWidth:0,
             display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"6px 0 4px",
             background:"var(--surface)", boxShadow: active===id ? "var(--sunken)" : "var(--raised)",
-            color: active===id ? "#000080" : "#000", fontSize:8, fontWeight:700,
-            letterSpacing:"0.02em", textTransform:"uppercase" }}>
-            {icon}<span style={{ maxWidth:"100%", lineHeight:1.05, textAlign:"center", wordBreak:"break-word" }}>{label}</span>
+            color: active===id ? "#000080" : "#000", fontSize:7, fontWeight:700,
+            letterSpacing:"0", textTransform:"uppercase" }}>
+            {icon}<span style={{ maxWidth:"100%", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{label}</span>
           </button>
         ))}
 
@@ -3107,7 +3120,7 @@ function LibraryPage() {
                         textAlign:"left",
                       }}>
                       <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-                        <span style={{ fontSize:18, flexShrink:0 }}>{article.emoji}</span>
+                        <Emoji char={article.emoji} size={18} />
                         <div>
                           <div style={{ fontWeight:700, fontSize:13, color:T.ink,
                             fontFamily:"'Montserrat', sans-serif" }}>
