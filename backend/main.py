@@ -321,6 +321,27 @@ async def setup_webhook(secret: str = ""):
     return result
 
 
+@app.get("/test-invoice")
+async def test_invoice(secret: str = "", uid: int = 0):
+    if not ADMIN_SECRET or secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="forbidden")
+    if not uid:
+        raise HTTPException(status_code=400, detail="uid required")
+    result = await tg_api(
+        "sendInvoice",
+        {
+            "chat_id": uid,
+            "title": "Заметки психонавта Premium",
+            "description": "Тестовая оплата доступа",
+            "payload": json.dumps({"uid": uid}),
+            "provider_token": "",
+            "currency": "XTR",
+            "prices": [{"label": "Premium", "amount": PREMIUM_STARS}],
+        },
+    )
+    return result
+
+
 @app.post("/refund")
 async def refund(req: RefundRequest):
     if not ADMIN_SECRET or req.adminSecret != ADMIN_SECRET:
