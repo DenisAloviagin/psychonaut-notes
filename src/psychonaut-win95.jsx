@@ -708,17 +708,15 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy }) {
               <button onClick={() => setFeedback(false)} style={{ width:18, height:16, fontSize:11, lineHeight:"12px",
                 background:"var(--surface)", color:"#000", border:"none", cursor:"pointer", boxShadow:"var(--raised)" }}>✕</button>
             </div>
-            <div style={{ fontSize:12, color:"#000", lineHeight:1.5, padding:"14px 14px 6px" }}>Связаться со мной можно здесь:</div>
+            <div style={{ fontSize:12, color:"#000", lineHeight:1.5, padding:"14px 14px 6px" }}>С вопросами и предложениями пиши на почту:</div>
             <div style={{ padding:"0 14px 8px" }}>
               {[
-                ["Почта","dostoevskifm@tutanota.com","mailto:dostoevskifm@tutanota.com"],
-                ["Telegram-бот","@psychonaut_support_bot","https://t.me/psychonaut_support_bot"],
-                ["Сайт","ayawaskaretreat.com","https://ayawaskaretreat.com"],
+                ["","dostoevskifm@tutanota.com","mailto:dostoevskifm@tutanota.com"],
               ].map(([label, val, href]) => (
                 <a key={href} href={href} target="_blank" rel="noreferrer"
                   style={{ display:"block", background:"var(--surface)", boxShadow:"var(--raised)", textDecoration:"none",
                     color:"#000", padding:"9px 12px", marginBottom:8 }}>
-                  <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em" }}>{label}</div>
+                  {label && <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em" }}>{label}</div>}
                   <div style={{ fontSize:13, fontWeight:700, color:"#000080" }}>{val}</div>
                 </a>
               ))}
@@ -2161,7 +2159,7 @@ function PrivacyPage({ onBack, onDeleteAll }) {
           Твои данные — твои
         </div>
         <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, fontFamily:"'Montserrat', sans-serif" }}>
-          Всё что ты пишешь в заметках — намерения, записи, ответы — хранится только в твоём Telegram аккаунте. Мы не видим это и не можем прочитать.
+          Всё что ты пишешь в заметках, намерения, записи, ответы, хранится в твоём Telegram (CloudStorage). На наших серверах заметки не лежат.
         </div>
       </Card>
 
@@ -2170,7 +2168,7 @@ function PrivacyPage({ onBack, onDeleteAll }) {
           Что хранится на нашем сервере
         </div>
         <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, fontFamily:"'Montserrat', sans-serif" }}>
-          Только один факт: оплачен ли у тебя полный доступ. Больше ничего. Содержимое заметок нам технически недоступно.
+          Только факт оплаты: открыт ли у тебя полный доступ. Сами заметки на сервере не хранятся. Когда ты запускаешь анализ, текст сессии уходит на сервер и к Claude только чтобы сгенерировать ответ, и нигде не сохраняется.
         </div>
       </Card>
 
@@ -2206,19 +2204,9 @@ function PrivacyPage({ onBack, onDeleteAll }) {
           onCancel={() => setConfirmAll(false)} />
       )}
 
-      <div style={{ marginTop:24, marginBottom:16, borderTop:`1px solid ${T.light}`, paddingTop:20 }}>
-        <a href="mailto:dostoevskifm@tutanota.com" style={{
-          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-          color:T.mid, textDecoration:"none", fontSize:13,
-          fontFamily:"'Montserrat', sans-serif", fontWeight:600,
-        }}>
-          ✉️ Обратная связь
-        </a>
-      </div>
-
-      <div style={{ fontSize:11, color:T.muted, textAlign:"center",
+      <div style={{ marginTop:24, paddingTop:20, borderTop:`1px solid ${T.light}`, fontSize:11, color:T.muted, textAlign:"center",
         lineHeight:1.6, fontFamily:"'Montserrat', sans-serif" }}>
-        @dostoevski_fm · ayawaskaretreat.com
+        @dostoevski_fm
       </div>
     </Screen>
   );
@@ -2468,7 +2456,7 @@ const LIBRARY_SECTIONS = [
 Состояние. Если состояние здоровья не позволяет тебе кататься на американских горках — скорее всего, тебе не стоит принимать психоделики. Это практическое правило, а не метафора.`,
       },
       {
-        emoji: "👁",
+        emoji: "👁️",
         title: "Зачем нужен проводник",
         tag: "Общее",
         text: `Для большинства людей основное чувство во время путешествия — не открытие чего-то нового и чуждого, а ощущение возвращения домой: воспоминание и объединение с тем, что и так было спящим в сознании.
@@ -2991,7 +2979,7 @@ const LIBRARY_SECTIONS = [
 Правовой статус. 5-MeO-DMT не входит в списки ООН, но контролируется в США (Список I) и Великобритании.`,
       },
       {
-        emoji: "🐊",
+        emoji: "🐸",
         title: "Камбо",
         tag: "Очищение · Не психоделик",
         text: `Камбо — секрет кожи лягушки Phyllomedusa bicolor из амазонских лесов. Используется племенами Катукина, Яваnаhua, Кашинауа и Матсес. Традиционно применяется для очищения тела и духа, лечения «панамы» (неудачи на охоте) и укрепления силы. Лягушка не убивается — после извлечения секрета отпускается обратно в лес.
