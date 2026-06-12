@@ -14,9 +14,16 @@ async function apiPremiumStatus() {
       body: JSON.stringify({ initData: tgInitData() }),
     });
     if (!r.ok) return null;
-    const d = await r.json();
-    return !!d.premium;
+    return await r.json();
   } catch { return null; }
+}
+
+function fmtDate(iso) {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  } catch { return ""; }
 }
 
 async function apiCreateInvoice() {
@@ -2349,6 +2356,7 @@ function UpgradePage({ onBack, onPurchase }) {
   const [stars, setStars] = useState(null);
   const [invoiceLink, setInvoiceLink] = useState("");
   const [error, setError] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
 
   // Счёт выпускает сервер при открытии экрана: получаем ссылку и реальную цену.
   useEffect(() => {
@@ -2380,8 +2388,8 @@ function UpgradePage({ onBack, onPurchase }) {
       if (status === "paid") {
         let ok = false;
         for (let i = 0; i < 5; i++) {
-          const prem = await apiPremiumStatus();
-          if (prem === true) { ok = true; break; }
+          const st = await apiPremiumStatus();
+          if (st && st.premium) { ok = true; if (st.expiresAt) setExpiresAt(st.expiresAt); break; }
           await new Promise(res => setTimeout(res, 1200));
         }
         setLoading(false);
@@ -2403,9 +2411,16 @@ function UpgradePage({ onBack, onPurchase }) {
       <div style={{ textAlign:"center", paddingTop:40 }}>
         <div style={{ fontSize:56, marginBottom:16 }}>⭐</div>
         <SectionTitle size={28}>ПОЛНЫЙ ДОСТУП ОТКРЫТ</SectionTitle>
-        <div style={{ color:T.mid, fontSize:13, margin:"16px 0 28px", lineHeight:1.6, fontFamily:"'Montserrat', sans-serif" }}>
-          Все модули доступны.<br />Веди столько сессий сколько нужно.
+        <div style={{ color:T.mid, fontSize:13, margin:"16px 0 12px", lineHeight:1.6, fontFamily:"'Montserrat', sans-serif" }}>
+          Доступ открыт на год.<br />Все модули доступны.
         </div>
+        {expiresAt ? (
+          <div style={{ display:"inline-block", background:T.bg, boxShadow:"var(--sunken)",
+            padding:"6px 12px", marginBottom:24, fontSize:11, fontWeight:700, color:T.accent,
+            fontFamily:"'Montserrat', sans-serif" }}>
+            Действует до {fmtDate(expiresAt)}
+          </div>
+        ) : null}
         <Btn onClick={onPurchase}>Продолжить</Btn>
       </div>
     </Screen>
@@ -2417,7 +2432,7 @@ function UpgradePage({ onBack, onPurchase }) {
       <SectionTitle size={28}>ПОЛНЫЙ ДОСТУП</SectionTitle>
       <div style={{ color:T.mid, marginBottom:24, fontSize:13, lineHeight:1.6, marginTop:6,
         fontFamily:"'Montserrat', sans-serif" }}>
-        Неограниченные сессии, анализ опыта и трекер изменений.
+        Доступ на год. Неограниченные сессии, анализ опыта и трекер изменений.
       </div>
 
       <div style={{ display:"flex", flexDirection:"column", gap:0, marginBottom:28,
@@ -2457,7 +2472,7 @@ function UpgradePage({ onBack, onPurchase }) {
       ) : null}
       <div style={{ fontSize:11, color:T.muted, textAlign:"center", marginTop:10,
         fontFamily:"'Montserrat', sans-serif" }}>
-        Telegram Stars · одноразовый платёж
+        Telegram Stars · доступ на год
       </div>
     </Screen>
   );
@@ -3717,7 +3732,7 @@ export default function App() {
           if (prem === "1") setIsPremium(true);
           // Сервер — источник истины: подтягиваем реальный статус премиума.
           const serverPrem = await apiPremiumStatus();
-          if (!cancelled && serverPrem !== null) setIsPremium(serverPrem);
+          if (!cancelled && serverPrem) setIsPremium(!!serverPrem.premium);
         }
       } catch {}
       if (!cancelled) setLoaded(true);
