@@ -5,6 +5,32 @@ const API_BASE = "https://psychonaut-notes-backend.onrender.com";
 const tgInitData = () =>
   (typeof window !== "undefined" && window.Telegram?.WebApp?.initData) || "";
 
+// ── Премиум: статус и счёт берём только с сервера ─────────────
+async function apiPremiumStatus() {
+  try {
+    const r = await fetch(`${API_BASE}/premium-status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: tgInitData() }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return !!d.premium;
+  } catch { return null; }
+}
+
+async function apiCreateInvoice() {
+  try {
+    const r = await fetch(`${API_BASE}/create-invoice`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: tgInitData() }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
 // ── Persistent storage (Telegram CloudStorage с фолбэком на localStorage) ─────
 const NOTE_PREFIX = "psy_note_";
 const INDEX_KEY = "psy_index";
@@ -1599,7 +1625,7 @@ function TrackerPage({ sessions, isPremium, onUpgrade }) {
           Трекер показывает как меняются твои оценки по 6 областям жизни от сессии к сессии.
           Два радара — твоя оценка и оценка Claude — чтобы увидеть расхождение.
         </div>
-        <Btn onClick={onUpgrade}>Открыть за 999 ⭐</Btn>
+        <Btn onClick={onUpgrade}>Открыть полный доступ</Btn>
       </div>
     </Screen>
   );
@@ -1940,7 +1966,7 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis }) {
           background:T.bg, borderRadius:8, padding:"8px 12px", lineHeight:1.6 }}>
           🔒 Для анализа текст сессии уходит на наш сервер и к Claude, чтобы сгенерировать ответ. На сервере он не сохраняется.
         </div>
-        <Btn onClick={onUpgrade}>Открыть за 999 ⭐</Btn>
+        <Btn onClick={onUpgrade}>Открыть полный доступ</Btn>
       </div>
     </div>
   );
@@ -2320,6 +2346,57 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onUpgrade, onPrivacy 
 function UpgradePage({ onBack, onPurchase }) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [stars, setStars] = useState(null);
+  const [invoiceLink, setInvoiceLink] = useState("");
+  const [error, setError] = useState("");
+
+  // Счёт выпускает сервер при открытии экрана: получаем ссылку и реальную цену.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const data = await apiCreateInvoice();
+      if (cancelled) return;
+      if (data && data.invoiceLink) {
+        setInvoiceLink(data.invoiceLink);
+        setStars(data.stars);
+      } else {
+        setError("Не удалось получить счёт. Попробуй позже.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  function startPayment() {
+    if (loading) return;
+    const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+    if (!invoiceLink || !tg || !tg.openInvoice) {
+      setError("Оплата недоступна. Открой приложение через Telegram.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    tg.openInvoice(invoiceLink, async (status) => {
+      // Не доверяем клиенту — перепроверяем оплату на сервере.
+      if (status === "paid") {
+        let ok = false;
+        for (let i = 0; i < 5; i++) {
+          const prem = await apiPremiumStatus();
+          if (prem === true) { ok = true; break; }
+          await new Promise(res => setTimeout(res, 1200));
+        }
+        setLoading(false);
+        if (ok) setDone(true);
+        else setError("Оплата прошла, но доступ ещё не подтвердился. Перезайди через минуту.");
+      } else {
+        setLoading(false);
+        if (status === "failed") setError("Оплата не прошла. Попробуй ещё раз.");
+      }
+    });
+  }
+
+  const btnLabel = loading
+    ? "Открываем оплату…"
+    : (stars != null ? `Открыть за ${stars} ⭐` : "Загрузка…");
 
   if (done) return (
     <Screen>
@@ -2371,9 +2448,13 @@ function UpgradePage({ onBack, onPurchase }) {
         ))}
       </div>
 
-      <Btn onClick={() => { setLoading(true); setTimeout(() => { setLoading(false); setDone(true); }, 1500); }} disabled={loading}>
-        {loading ? "Обрабатываем..." : "Открыть за 999 ⭐"}
+      <Btn onClick={startPayment} disabled={loading || !invoiceLink}>
+        {btnLabel}
       </Btn>
+      {error ? (
+        <div style={{ fontSize:11, color:T.accent, textAlign:"center", marginTop:10,
+          fontFamily:"'Montserrat', sans-serif" }}>{error}</div>
+      ) : null}
       <div style={{ fontSize:11, color:T.muted, textAlign:"center", marginTop:10,
         fontFamily:"'Montserrat', sans-serif" }}>
         Telegram Stars · одноразовый платёж
@@ -3634,6 +3715,9 @@ export default function App() {
           nextId = maxId;
           const prem = await storeGet(PREMIUM_KEY);
           if (prem === "1") setIsPremium(true);
+          // Сервер — источник истины: подтягиваем реальный статус премиума.
+          const serverPrem = await apiPremiumStatus();
+          if (!cancelled && serverPrem !== null) setIsPremium(serverPrem);
         }
       } catch {}
       if (!cancelled) setLoaded(true);
