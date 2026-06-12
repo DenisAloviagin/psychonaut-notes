@@ -342,6 +342,35 @@ async def test_invoice(secret: str = "", uid: int = 0):
     return result
 
 
+@app.get("/refund-last")
+async def refund_last(secret: str = "", uid: int = 0):
+    if not ADMIN_SECRET or secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="forbidden")
+    if not uid:
+        raise HTTPException(status_code=400, detail="uid required")
+    row = db_execute(
+        "SELECT telegram_payment_charge_id FROM payments "
+        "WHERE telegram_user_id=%s AND refunded=FALSE "
+        "ORDER BY created_at DESC LIMIT 1;",
+        (uid,),
+        fetch=True,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="no active payment")
+    charge_id = row[0]
+    result = await tg_api(
+        "refundStarPayment",
+        {"user_id": uid, "telegram_payment_charge_id": charge_id},
+    )
+    if result.get("ok"):
+        db_execute(
+            "UPDATE payments SET refunded=TRUE, refunded_at=now() "
+            "WHERE telegram_payment_charge_id=%s;",
+            (charge_id,),
+        )
+    return result
+
+
 @app.post("/refund")
 async def refund(req: RefundRequest):
     if not ADMIN_SECRET or req.adminSecret != ADMIN_SECRET:
