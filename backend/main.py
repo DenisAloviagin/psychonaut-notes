@@ -36,6 +36,15 @@ WEBHOOK_URL = os.environ.get(
     "WEBHOOK_URL",
     "https://psychonaut-notes-backend.onrender.com/telegram-webhook",
 )
+# Адрес самого приложения (Vercel). На него ведёт кнопка запуска.
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://psychonaut-notes.vercel.app")
+
+GREETING = (
+    "Привет. Это «Заметки психонавта», приложение для подготовки "
+    "к психоделическому опыту и его осмысления после. "
+    "Записи, намерения, разбор сессий и трекер изменений.\n\n"
+    "Нажми кнопку ниже, чтобы открыть приложение."
+)
 
 # Проверку подписи можно временно выключить для отладки: VERIFY_INIT_DATA=false
 VERIFY_INIT_DATA = os.environ.get("VERIFY_INIT_DATA", "true").lower() != "false"
@@ -321,6 +330,25 @@ async def telegram_webhook(request: Request):
             except Exception as e:
                 print(f"payment insert error: {e}")
 
+    # Приветствие на /start с кнопкой запуска приложения.
+    text = (msg.get("text") or "").strip()
+    if text.startswith("/start"):
+        chat_id = (msg.get("chat") or {}).get("id")
+        if chat_id:
+            await tg_api(
+                "sendMessage",
+                {
+                    "chat_id": chat_id,
+                    "text": GREETING,
+                    "reply_markup": {
+                        "inline_keyboard": [[
+                            {"text": "Открыть приложение",
+                             "web_app": {"url": WEBAPP_URL}}
+                        ]]
+                    },
+                },
+            )
+
     return {"ok": True}
 
 
@@ -355,6 +383,23 @@ async def test_invoice(secret: str = "", uid: int = 0):
             "provider_token": "",
             "currency": "XTR",
             "prices": [{"label": "Premium", "amount": PREMIUM_STARS}],
+        },
+    )
+    return result
+
+
+@app.get("/setup-menu")
+async def setup_menu(secret: str = ""):
+    if not ADMIN_SECRET or secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="forbidden")
+    result = await tg_api(
+        "setChatMenuButton",
+        {
+            "menu_button": {
+                "type": "web_app",
+                "text": "Открыть",
+                "web_app": {"url": WEBAPP_URL},
+            }
         },
     )
     return result
