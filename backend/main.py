@@ -21,6 +21,12 @@ try:
 except ValueError:
     PREMIUM_STARS = 1
 
+# Срок доступа в днях. 365 = год. Меняется тут, без правок кода.
+try:
+    PREMIUM_DAYS = int(os.environ.get("PREMIUM_DAYS", "365"))
+except ValueError:
+    PREMIUM_DAYS = 365
+
 # Секрет вебхука: им подписываются апдейты от Telegram, чтобы не приняли подделку.
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
 # Секрет для служебных операций (настройка вебхука и возврат денег).
@@ -86,6 +92,14 @@ def init_db() -> None:
                         ON payments (telegram_user_id)
                         WHERE refunded = FALSE;
                     """
+                )
+                cur.execute(
+                    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;"
+                )
+                cur.execute(
+                    "UPDATE payments SET expires_at = created_at + make_interval(days => %s) "
+                    "WHERE expires_at IS NULL;",
+                    (PREMIUM_DAYS,),
                 )
             conn.commit()
         print("DB init OK: table payments is ready")
@@ -256,15 +270,19 @@ def premium_status(req: InitDataRequest):
         return {"premium": False}
     try:
         row = db_execute(
-            "SELECT 1 FROM payments "
-            "WHERE telegram_user_id=%s AND refunded=FALSE LIMIT 1;",
+            "SELECT expires_at FROM payments "
+            "WHERE telegram_user_id=%s AND refunded=FALSE AND expires_at > now() "
+            "ORDER BY expires_at DESC LIMIT 1;",
             (user_id,),
             fetch=True,
         )
-        return {"premium": bool(row)}
+        if row:
+            exp = row[0]
+            return {"premium": True, "expiresAt": exp.isoformat() if exp else None}
+        return {"premium": False, "expiresAt": None}
     except Exception as e:
         print(f"premium-status error: {e}")
-        return {"premium": False}
+        return {"premium": False, "expiresAt": None}
 
 
 @app.post("/telegram-webhook")
@@ -295,10 +313,10 @@ async def telegram_webhook(request: Request):
             try:
                 db_execute(
                     "INSERT INTO payments "
-                    "(telegram_user_id, telegram_payment_charge_id, stars_amount) "
-                    "VALUES (%s, %s, %s) "
+                    "(telegram_user_id, telegram_payment_charge_id, stars_amount, expires_at) "
+                    "VALUES (%s, %s, %s, now() + make_interval(days => %s)) "
                     "ON CONFLICT (telegram_payment_charge_id) DO NOTHING;",
-                    (user_id, charge_id, amount),
+                    (user_id, charge_id, amount, PREMIUM_DAYS),
                 )
             except Exception as e:
                 print(f"payment insert error: {e}")
