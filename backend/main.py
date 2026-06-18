@@ -39,6 +39,10 @@ WEBHOOK_URL = os.environ.get(
 # Адрес самого приложения (Vercel). На него ведёт кнопка запуска.
 WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://psychonaut-notes.vercel.app")
 
+# Белый список Telegram ID тестировщиков. Пустой набор = вход открыт всем.
+# На время закрытого теста сюда впишутся ID тестировщиков.
+ALLOWLIST = set()
+
 GREETING = "🖥️ Заметки психонавта запущены.\n\nЭто мини-приложение для интеграции психоделического опыта. Место, где опыт не теряется: подготовка до, запись по горячим следам, спокойный разбор после.\n\nЧто внутри:\n📝 Заметки. Намерения, сама сессия, сложные моменты, что пришло\n🔍 Разбор сессий. Claude отражает паттерны и задаёт вопросы для углубления\n📊 Трекер. Как меняются твои грани от сессии к сессии, два радара\n📚 База знаний. Статьи о подготовке, самом опыте и интеграции\n🛟 Кризис. Что делать в трудный момент, упражнения для заземления\n\nЖми кнопку ниже 👇"
 
 # Проверку подписи можно временно выключить для отладки: VERIFY_INIT_DATA=false
@@ -105,6 +109,14 @@ def init_db() -> None:
                     "WHERE expires_at IS NULL;",
                     (PREMIUM_DAYS,),
                 )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS consents (
+                        telegram_user_id  BIGINT      PRIMARY KEY,
+                        agreed_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );
+                    """
+                )
             conn.commit()
         print("DB init OK: table payments is ready")
     except Exception as e:
@@ -150,6 +162,30 @@ def get_user_id_from_init_data(init_data: str):
         return json.loads(user_json).get("id")
     except Exception:
         return None
+
+
+def get_user_name_from_init_data(init_data: str) -> str:
+    try:
+        pairs = dict(parse_qsl(init_data, keep_blank_values=True))
+        u = json.loads(pairs.get("user", "") or "{}")
+        return u.get("username") or u.get("first_name") or ""
+    except Exception:
+        return ""
+
+
+def is_allowed(user_id) -> bool:
+    if not ALLOWLIST:
+        return True
+    return str(user_id) in ALLOWLIST
+
+
+def require_tester(init_data: str):
+    if not verify_init_data(init_data):
+        raise HTTPException(status_code=403, detail="Invalid init data")
+    user_id = get_user_id_from_init_data(init_data)
+    if not is_allowed(user_id):
+        raise HTTPException(status_code=403, detail="Not in allowlist")
+    return user_id
 
 
 # ── Запросы к Telegram Bot API ──────────────────────────────────────────────────
@@ -221,16 +257,14 @@ def db_health():
 
 @app.post("/analyze")
 async def analyze(req: AnalyzeRequest):
-    if not verify_init_data(req.initData):
-        raise HTTPException(status_code=403, detail="Invalid init data")
+    require_tester(req.initData)
     text = await ask_claude(req.prompt, max_tokens=1500)
     return {"text": text or "Не удалось получить анализ."}
 
 
 @app.post("/ratings")
 async def ratings(req: AnalyzeRequest):
-    if not verify_init_data(req.initData):
-        raise HTTPException(status_code=403, detail="Invalid init data")
+    require_tester(req.initData)
     raw = await ask_claude(req.prompt, max_tokens=100)
     cleaned = raw.replace("```json", "").replace("```", "").strip()
     try:
@@ -241,11 +275,58 @@ async def ratings(req: AnalyzeRequest):
 
 
 # ── Оплата ───────────────────────────────────────────────────────────────────────
-@app.post("/create-invoice")
-async def create_invoice(req: InitDataRequest):
+@app.post("/access-check")
+def access_check(req: InitDataRequest):
     if not verify_init_data(req.initData):
         raise HTTPException(status_code=403, detail="Invalid init data")
     user_id = get_user_id_from_init_data(req.initData)
+    name = get_user_name_from_init_data(req.initData)
+    allowed = is_allowed(user_id)
+    print(f"ACCESS id={user_id} name={name} allowed={allowed}")
+    return {"allowed": allowed}
+
+
+@app.post("/consent-status")
+def consent_status(req: InitDataRequest):
+    if not verify_init_data(req.initData):
+        raise HTTPException(status_code=403, detail="Invalid init data")
+    user_id = get_user_id_from_init_data(req.initData)
+    if not user_id:
+        return {"consented": False}
+    try:
+        row = db_execute(
+            "SELECT 1 FROM consents WHERE telegram_user_id=%s LIMIT 1;",
+            (user_id,),
+            fetch=True,
+        )
+        return {"consented": bool(row)}
+    except Exception as e:
+        print(f"consent-status error: {e}")
+        return {"consented": False}
+
+
+@app.post("/consent-accept")
+def consent_accept(req: InitDataRequest):
+    if not verify_init_data(req.initData):
+        raise HTTPException(status_code=403, detail="Invalid init data")
+    user_id = get_user_id_from_init_data(req.initData)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="No user id")
+    try:
+        db_execute(
+            "INSERT INTO consents (telegram_user_id) VALUES (%s) "
+            "ON CONFLICT (telegram_user_id) DO NOTHING;",
+            (user_id,),
+        )
+    except Exception as e:
+        print(f"consent-accept error: {e}")
+        raise HTTPException(status_code=500, detail="DB error")
+    return {"ok": True}
+
+
+@app.post("/create-invoice")
+async def create_invoice(req: InitDataRequest):
+    user_id = require_tester(req.initData)
     if not user_id:
         raise HTTPException(status_code=400, detail="No user id")
     result = await tg_api(
@@ -267,9 +348,7 @@ async def create_invoice(req: InitDataRequest):
 
 @app.post("/premium-status")
 def premium_status(req: InitDataRequest):
-    if not verify_init_data(req.initData):
-        raise HTTPException(status_code=403, detail="Invalid init data")
-    user_id = get_user_id_from_init_data(req.initData)
+    user_id = require_tester(req.initData)
     if not user_id:
         return {"premium": False}
     try:
@@ -328,6 +407,8 @@ async def telegram_webhook(request: Request):
     # Приветствие на /start с кнопкой запуска приложения.
     text = (msg.get("text") or "").strip()
     if text.startswith("/start"):
+        u = msg.get("from") or {}
+        print(f"TESTER_START id={u.get('id')} username={u.get('username')} name={u.get('first_name')}")
         chat_id = (msg.get("chat") or {}).get("id")
         if chat_id:
             await tg_api(
