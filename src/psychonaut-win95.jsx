@@ -38,6 +38,43 @@ async function apiCreateInvoice() {
   } catch { return null; }
 }
 
+async function apiAccessCheck() {
+  try {
+    const r = await fetch(`${API_BASE}/access-check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: tgInitData() }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return !!d.allowed;
+  } catch { return null; }
+}
+
+async function apiConsentStatus() {
+  try {
+    const r = await fetch(`${API_BASE}/consent-status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: tgInitData() }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return !!d.consented;
+  } catch { return null; }
+}
+
+async function apiConsentAccept() {
+  try {
+    const r = await fetch(`${API_BASE}/consent-accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: tgInitData() }),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
 // ── Persistent storage (Telegram CloudStorage с фолбэком на localStorage) ─────
 const NOTE_PREFIX = "psy_note_";
 const INDEX_KEY = "psy_index";
@@ -3695,6 +3732,97 @@ const uid = () => ++nextId;
 
 
 
+function AccessGate({ state, onRetry }) {
+  const openSupport = () => {
+    const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+    if (tg && tg.openTelegramLink) tg.openTelegramLink("https://t.me/psychonaut_support_bot");
+    else window.open("https://t.me/psychonaut_support_bot", "_blank");
+  };
+  return (
+    <div style={{ minHeight:"100vh", background:"#008080", display:"flex", alignItems:"center",
+      justifyContent:"center", padding:20, fontFamily:"'Montserrat', sans-serif" }}>
+      <div style={{ width:"100%", maxWidth:320, background:"var(--surface)", boxShadow:"var(--raised)" }}>
+        <div style={{ background:"#000080", color:"#fff", display:"flex", alignItems:"center", gap:6,
+          padding:"4px 6px", fontSize:12, fontWeight:700 }}>
+          <span>🔒</span><span>Доступ ограничен</span>
+        </div>
+        <div style={{ padding:"18px 16px", color:"#000" }}>
+          {state === "checking" ? (
+            <div style={{ fontSize:13, color:"#222", padding:"12px 0", textAlign:"center" }}>Проверяем доступ…</div>
+          ) : state === "error" ? (
+            <>
+              <div style={{ fontSize:22, fontWeight:700, marginBottom:12 }}>НЕТ СВЯЗИ</div>
+              <div style={{ fontSize:13, lineHeight:1.6, color:"#222", marginBottom:18 }}>
+                Не удалось проверить доступ. Проверь соединение и попробуй снова.
+              </div>
+              <Btn onClick={onRetry}>Проверить снова</Btn>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize:22, fontWeight:700, letterSpacing:".02em", marginBottom:12 }}>ЗАКРЫТЫЙ ТЕСТ</div>
+              <div style={{ fontSize:13, lineHeight:1.6, color:"#222", marginBottom:12 }}>
+                Идёт закрытое бета-тестирование. Вход в приложение сейчас только по приглашению.
+              </div>
+              <div style={{ fontSize:12, lineHeight:1.6, color:"#444", marginBottom:16 }}>
+                Если ты в составе тестировщиков, напиши нам.
+              </div>
+              <div style={{ marginBottom:10 }}>
+                <Btn onClick={openSupport}>Связаться: @psychonaut_support_bot</Btn>
+              </div>
+              <Btn onClick={onRetry}>Проверить снова</Btn>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConsentScreen({ onDone }) {
+  const [adult, setAdult] = useState(false);
+  const [terms, setTerms] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const ready = adult && terms && !saving;
+  const boxStyle = {
+    width:16, height:16, flexShrink:0, background:"#fff", boxShadow:"var(--sunken)",
+    color:"#000", fontSize:12, fontWeight:700, lineHeight:"14px", textAlign:"center",
+  };
+  async function submit() {
+    if (!ready) return;
+    setSaving(true); setError("");
+    const ok = await apiConsentAccept();
+    setSaving(false);
+    if (ok) onDone();
+    else setError("Не удалось сохранить. Проверь соединение и попробуй ещё раз.");
+  }
+  return (
+    <div style={{ minHeight:"100vh", background:"#008080", display:"flex", alignItems:"center",
+      justifyContent:"center", padding:16, fontFamily:"'Montserrat', sans-serif" }}>
+      <div style={{ width:"100%", maxWidth:360, maxHeight:"92vh", overflowY:"auto",
+        background:"var(--surface)", boxShadow:"var(--raised)" }}>
+        <div style={{ background:"var(--titlebar)", color:"#fff", padding:"4px 6px", fontSize:12, fontWeight:700 }}>Согласие</div>
+        <div style={{ padding:"16px 16px 18px", color:"#000" }}>
+          <div style={{ fontSize:20, fontWeight:700, letterSpacing:".02em", marginBottom:14 }}>ПЕРЕД НАЧАЛОМ</div>
+          <div onClick={() => setAdult(v => !v)} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:12, cursor:"pointer" }}>
+            <div style={boxStyle}>{adult ? "✓" : ""}</div>
+            <div style={{ fontSize:13, lineHeight:1.5 }}>Мне есть 18 лет.</div>
+          </div>
+          <div onClick={() => setTerms(v => !v)} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:14, cursor:"pointer" }}>
+            <div style={boxStyle}>{terms ? "✓" : ""}</div>
+            <div style={{ fontSize:13, lineHeight:1.5 }}>Я прочитал и согласен с условиями ниже.</div>
+          </div>
+          <div style={{ background:"#fff", boxShadow:"var(--sunken)", padding:"10px 12px", fontSize:12, lineHeight:1.6, color:"#222", marginBottom:16 }}>
+            Заметки психонавта это инструмент для записи и осмысления собственного опыта. Приложение не предоставляет психоактивные вещества, не организует их приём и не побуждает кого-либо их принимать. Все решения о своём опыте вы принимаете самостоятельно и несёте за них полную ответственность. Приложение не является медицинской услугой и не заменяет консультацию врача или психотерапевта.
+          </div>
+          <Btn onClick={submit} disabled={!ready}>{saving ? "Сохраняем…" : "Продолжить"}</Btn>
+          {error ? (<div style={{ fontSize:11, color:T.accent, textAlign:"center", marginTop:10, fontFamily:"'Montserrat', sans-serif" }}>{error}</div>) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const hasSavedFlow = (() => {
     try { const d = sessionStorage.getItem("flowData"); return d && d !== "{}"; } catch { return false; }
@@ -3706,7 +3834,7 @@ export default function App() {
   const [activeSession, setActiveSession] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
   const [trackerUpgrade, setTrackerUpgrade] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // New session flow — persisted in sessionStorage to survive tab switches
   const [flowStep, setFlowStep] = useState(() => {
@@ -3719,6 +3847,20 @@ export default function App() {
   const [draftId, setDraftId] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const persistedRef = useRef({});
+
+  // Гейт закрытого теста: статус доступа проверяется на сервере по белому списку.
+  const [access, setAccess] = useState("checking");
+  const [consent, setConsent] = useState("checking");
+  async function runGates() {
+    setAccess("checking");
+    const a = await apiAccessCheck();
+    if (a !== true) { setAccess(a === false ? "denied" : "error"); return; }
+    setAccess("ok");
+    const c = await apiConsentStatus();
+    setConsent(c === true ? "ok" : c === false ? "needed" : "error");
+  }
+  useEffect(() => { runGates(); }, []);
+  function recheckAccess() { runGates(); }
 
   // Загрузка сессий и факта оплаты из хранилища при старте
   useEffect(() => {
@@ -3895,13 +4037,24 @@ ${facetTexts}
     setJournalView("list");
   }
 
-  // Пока показываем окно конфиденциальности — не рендерим остальной интерфейс,
-  // иначе он на кадр мелькает за бирюзовым фоном при запуске.
-  if (showOnboarding) {
+  // Гейт закрытого теста имеет приоритет: не из списка — внутрь не пускаем.
+  if (access !== "ok") {
     return (
       <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", position:"relative", overflowX:"hidden" }}>
         <Style />
-        <FirstLaunch onAccept={() => setShowOnboarding(false)} />
+        <AccessGate state={access} onRetry={recheckAccess} />
+      </div>
+    );
+  }
+
+  // Экран согласия (одноразовый, правда в базе на сервере). Заменяет старый попап.
+  if (consent !== "ok") {
+    return (
+      <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", position:"relative", overflowX:"hidden" }}>
+        <Style />
+        {consent === "needed"
+          ? <ConsentScreen onDone={() => setConsent("ok")} />
+          : <AccessGate state={consent === "error" ? "error" : "checking"} onRetry={runGates} />}
       </div>
     );
   }
