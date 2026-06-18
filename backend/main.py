@@ -223,7 +223,7 @@ def db_health():
 async def analyze(req: AnalyzeRequest):
     if not verify_init_data(req.initData):
         raise HTTPException(status_code=403, detail="Invalid init data")
-    text = await ask_claude(req.prompt, max_tokens=1000)
+    text = await ask_claude(req.prompt, max_tokens=1500)
     return {"text": text or "Не удалось получить анализ."}
 
 
