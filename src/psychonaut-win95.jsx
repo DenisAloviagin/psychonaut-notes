@@ -2229,6 +2229,12 @@ function PrivacyPage({ onBack, onDeleteAll }) {
     setDeleted(true);
     if (onDeleteAll) onDeleteAll();
   }
+  const openDoc = (path) => {
+    const url = (typeof window !== "undefined" ? window.location.origin : "") + path;
+    const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+    if (tg && tg.openLink) tg.openLink(url);
+    else window.open(url, "_blank");
+  };
 
   return (
     <Screen>
@@ -2251,7 +2257,7 @@ function PrivacyPage({ onBack, onDeleteAll }) {
           Что хранится на нашем сервере
         </div>
         <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, fontFamily:"'Montserrat', sans-serif" }}>
-          Только факт оплаты: открыт ли у тебя полный доступ. Сами заметки на сервере не хранятся. Когда ты запускаешь анализ, текст сессии уходит на сервер и к Claude только чтобы сгенерировать ответ, и нигде не сохраняется.
+          На сервере хранится только факт оплаты (открыт ли у тебя полный доступ) и факт твоего согласия с условиями. Сами заметки на сервере не хранятся. Когда ты запускаешь анализ, текст сессии уходит на сервер и к Claude только чтобы сгенерировать ответ, и нигде не сохраняется.
         </div>
       </Card>
 
@@ -2286,6 +2292,18 @@ function PrivacyPage({ onBack, onDeleteAll }) {
           onConfirm={() => { setConfirmAll(false); handleDelete(); }}
           onCancel={() => setConfirmAll(false)} />
       )}
+
+      <Card style={{ marginTop:24, marginBottom:0 }}>
+        <div style={{ fontWeight:700, fontSize:14, color:T.ink, marginBottom:10, fontFamily:"'Montserrat', sans-serif" }}>
+          Полные документы
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          <span onClick={() => openDoc("/terms.html")}
+            style={{ fontSize:13, color:"#000080", textDecoration:"underline", cursor:"pointer", fontFamily:"'Montserrat', sans-serif" }}>Условия использования</span>
+          <span onClick={() => openDoc("/privacy.html")}
+            style={{ fontSize:13, color:"#000080", textDecoration:"underline", cursor:"pointer", fontFamily:"'Montserrat', sans-serif" }}>Политика конфиденциальности</span>
+        </div>
+      </Card>
 
       <div style={{ marginTop:24, paddingTop:20, borderTop:`1px solid ${T.light}`, fontSize:11, color:T.muted, textAlign:"center",
         lineHeight:1.6, fontFamily:"'Montserrat', sans-serif" }}>
@@ -3788,6 +3806,12 @@ function ConsentScreen({ onDone }) {
     width:16, height:16, flexShrink:0, background:"#fff", boxShadow:"var(--sunken)",
     color:"#000", fontSize:12, fontWeight:700, lineHeight:"14px", textAlign:"center",
   };
+  const openDoc = (path) => {
+    const url = (typeof window !== "undefined" ? window.location.origin : "") + path;
+    const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+    if (tg && tg.openLink) tg.openLink(url);
+    else window.open(url, "_blank");
+  };
   async function submit() {
     if (!ready) return;
     setSaving(true); setError("");
@@ -3808,9 +3832,15 @@ function ConsentScreen({ onDone }) {
             <div style={boxStyle}>{adult ? "✓" : ""}</div>
             <div style={{ fontSize:13, lineHeight:1.5 }}>Мне есть 18 лет.</div>
           </div>
-          <div onClick={() => setTerms(v => !v)} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:14, cursor:"pointer" }}>
+          <div onClick={() => setTerms(v => !v)} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:10, cursor:"pointer" }}>
             <div style={boxStyle}>{terms ? "✓" : ""}</div>
             <div style={{ fontSize:13, lineHeight:1.5 }}>Я прочитал и согласен с условиями ниже.</div>
+          </div>
+          <div style={{ display:"flex", gap:16, marginBottom:14, paddingLeft:26, flexWrap:"wrap" }}>
+            <span onClick={(e) => { e.stopPropagation(); openDoc("/terms.html"); }}
+              style={{ fontSize:12, color:"#000080", textDecoration:"underline", cursor:"pointer" }}>Условия использования</span>
+            <span onClick={(e) => { e.stopPropagation(); openDoc("/privacy.html"); }}
+              style={{ fontSize:12, color:"#000080", textDecoration:"underline", cursor:"pointer" }}>Политика конфиденциальности</span>
           </div>
           <div style={{ background:"#fff", boxShadow:"var(--sunken)", padding:"10px 12px", fontSize:12, lineHeight:1.6, color:"#222", marginBottom:16 }}>
             Заметки психонавта это инструмент для записи и осмысления собственного опыта. Приложение не предоставляет психоактивные вещества, не организует их приём и не побуждает кого-либо их принимать. Все решения о своём опыте вы принимаете самостоятельно и несёте за них полную ответственность. Приложение не является медицинской услугой и не заменяет консультацию врача или психотерапевта.
