@@ -3696,7 +3696,7 @@ function CrisisPage() {
               display:"flex", justifyContent:"space-between", alignItems:"center",
             }}>
               <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-                <span style={{ fontSize:20 }}>{topic.emoji}</span>
+                <Emoji char={topic.emoji} size={20} />
                 <div>
                   <div style={{ fontWeight:700, fontSize:14, color: openTopic===i ? T.accent : T.ink,
                     fontFamily:"'Montserrat', sans-serif" }}>{topic.title}</div>
