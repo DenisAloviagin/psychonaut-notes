@@ -275,6 +275,12 @@ const css = `
   input[type=range]::-moz-range-track{ height:4px; background:#808080; box-shadow: inset 1px 1px #000, inset -1px -1px #fff; }
   input[type=range]::-moz-range-thumb{ width:11px; height:21px; background:#c0c0c0; box-shadow:var(--raised); border:none; }
   button { font-family: inherit; cursor:pointer; }
+  .tl-btn{ background:var(--surface); box-shadow:var(--raised); padding:5px 10px; font-size:12px; color:#000; border:none; }
+  .tl-btn:active{ box-shadow:var(--sunken); }
+  .tl-tile{ box-shadow:var(--raised); }
+  .tl-tile:active{ box-shadow:var(--sunken); }
+  .tl-swb{ box-shadow:var(--raised); cursor:pointer; }
+  .tl-swb.on{ box-shadow:var(--sunken); }
   img.emoji { width:1em; height:1em; display:inline-block; vertical-align:middle; margin:0; }
   ::selection{ background:#000080; color:#fff; }
   ::-webkit-scrollbar{ width:15px; height:15px; }
@@ -2127,6 +2133,134 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis }) {
   );
 }
 
+const LOCKER_COLORS = {
+  none:{ bg:"var(--surface)", fg:"#000000" },
+  red:{ bg:"#c0392b", fg:"#ffffff" }, orange:{ bg:"#e67e22", fg:"#000000" }, yellow:{ bg:"#f1c40f", fg:"#000000" },
+  green:{ bg:"#27ae60", fg:"#ffffff" }, cyan:{ bg:"#5dade2", fg:"#000000" }, blue:{ bg:"#2c5fbf", fg:"#ffffff" }, violet:{ bg:"#8e44ad", fg:"#ffffff" },
+};
+const LOCKER_ORDER = ["red","orange","yellow","green","cyan","blue","violet"];
+
+function lockerFmt(ts) {
+  try {
+    const d = new Date(ts);
+    const mm = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"][d.getMonth()];
+    return d.getDate() + " " + mm;
+  } catch { return ""; }
+}
+
+function LockerNote({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 22 22" style={{ flex:"none" }} aria-hidden="true">
+      <rect x="4.5" y="2.5" width="11" height="16" fill="none" stroke="currentColor" />
+      <line x1="7" y1="7" x2="13" y2="7" stroke="currentColor" />
+      <line x1="7" y1="10" x2="13" y2="10" stroke="currentColor" />
+      <line x1="7" y1="13" x2="11" y2="13" stroke="currentColor" />
+    </svg>
+  );
+}
+
+function ThoughtLocker({ session, onUpdateSession }) {
+  const list = session.locker || [];
+  const [openId, setOpenId] = useState(undefined);
+  const [draft, setDraft] = useState({ text:"", color:"none" });
+  const pressTimer = useRef(null);
+
+  function openNew() { setDraft({ text:"", color:"none" }); setOpenId(null); }
+  function openEdit(t) { setDraft({ text:t.text, color:t.color || "none" }); setOpenId(t.id); }
+  function closeModal() { setOpenId(undefined); }
+
+  function save() {
+    const text = draft.text.trim();
+    if (!text) { closeModal(); return; }
+    let next;
+    if (openId === null) {
+      next = [...list, { id: Math.random().toString(36).slice(2), text, color: draft.color, createdAt: Date.now() }];
+    } else {
+      next = list.map(t => t.id === openId ? { ...t, text, color: draft.color } : t);
+    }
+    onUpdateSession({ ...session, locker: next });
+    closeModal();
+  }
+  function del() {
+    onUpdateSession({ ...session, locker: list.filter(t => t.id !== openId) });
+    closeModal();
+  }
+
+  return (
+    <div>
+      <div style={{ background:"var(--surface)", boxShadow:"var(--raised)", padding:3 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:6, background:"var(--titlebar)", color:"#fff",
+          fontWeight:700, fontSize:12, padding:"3px 4px", fontFamily:"'Montserrat', sans-serif" }}>
+          <FolderIcon size={14} open />
+          <span>Шкафчик мыслей</span>
+        </div>
+        <div style={{ padding:5 }}>
+          <button className="tl-btn" onClick={openNew} style={{ fontFamily:"'Montserrat', sans-serif" }}>+ Новая мысль</button>
+        </div>
+        <div style={{ background:"#fff", boxShadow:"var(--sunken)", margin:"0 5px 5px", padding:10, minHeight:120 }}>
+          {list.length === 0 ? (
+            <div style={{ fontSize:12, color:T.muted, textAlign:"center", padding:"24px 8px", lineHeight:1.6, fontFamily:"'Montserrat', sans-serif" }}>
+              Пока пусто. Сюда можно докидывать короткие мысли, которые приходят уже после сессии, в разные дни.
+            </div>
+          ) : (
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
+              {list.map(t => {
+                const c = LOCKER_COLORS[t.color] || LOCKER_COLORS.none;
+                return (
+                  <div key={t.id} className="tl-tile"
+                    onClick={() => openEdit(t)}
+                    onTouchStart={() => { pressTimer.current = setTimeout(() => openEdit(t), 550); }}
+                    onTouchEnd={() => { if (pressTimer.current) clearTimeout(pressTimer.current); }}
+                    onTouchMove={() => { if (pressTimer.current) clearTimeout(pressTimer.current); }}
+                    style={{ position:"relative", minHeight:98, padding:"8px 6px 16px", cursor:"pointer",
+                      display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", gap:5,
+                      background:c.bg, color:c.fg, fontFamily:"'Montserrat', sans-serif" }}>
+                    <LockerNote size={22} />
+                    <div style={{ fontSize:11, lineHeight:1.35, display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{t.text}</div>
+                    <div style={{ position:"absolute", bottom:3, left:0, right:0, fontSize:9, opacity:0.75 }}>{lockerFmt(t.createdAt)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {openId !== undefined && (
+        <div onClick={closeModal} style={{ position:"fixed", inset:0, zIndex:3000, background:"rgba(0,0,0,0.45)",
+          display:"flex", alignItems:"center", justifyContent:"center", padding:12 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:300, maxWidth:"100%", background:"var(--surface)", boxShadow:"var(--raised)", padding:3 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, background:"var(--titlebar)", color:"#fff",
+              fontWeight:700, fontSize:12, padding:"3px 4px", fontFamily:"'Montserrat', sans-serif" }}>
+              <span style={{ flex:1 }}>{openId === null ? "Новая мысль" : "Мысль"}</span>
+              <button className="tl-btn" onClick={closeModal} aria-label="Закрыть" style={{ width:20, height:18, fontSize:12, padding:0, lineHeight:1 }}>✕</button>
+            </div>
+            <div style={{ padding:"6px 5px 0" }}>
+              <textarea value={draft.text} onChange={e => setDraft({ ...draft, text:e.target.value })}
+                placeholder="Запиши мысль, которая пришла уже потом"
+                style={{ minHeight:96, fontFamily:"'Montserrat', sans-serif" }} />
+            </div>
+            <div style={{ fontSize:11, color:T.ink, margin:"8px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>Цвет плитки:</div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6, padding:"0 5px" }}>
+              {LOCKER_ORDER.map(k => (
+                <button key={k} className={"tl-swb" + (draft.color === k ? " on" : "")} onClick={() => setDraft({ ...draft, color:k })}
+                  aria-label={k} style={{ width:28, height:22, background:LOCKER_COLORS[k].bg, border:"none" }} />
+              ))}
+              <button className={"tl-swb" + (draft.color === "none" ? " on" : "")} onClick={() => setDraft({ ...draft, color:"none" })}
+                aria-label="без цвета" style={{ width:34, height:22, fontSize:10, color:"#000", border:"none",
+                  background:"repeating-linear-gradient(45deg,#fff,#fff 3px,#ddd 3px,#ddd 6px)" }}>нет</button>
+            </div>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"10px 5px 5px" }}>
+              <button className="tl-btn" onClick={del} style={{ visibility: openId === null ? "hidden" : "visible", fontFamily:"'Montserrat', sans-serif" }}>Удалить</button>
+              <button className="tl-btn" onClick={save} style={{ fontFamily:"'Montserrat', sans-serif" }}>Готово</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, onUpdateSession, onDelete }) {
   const [tab, setTab] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -2155,12 +2289,13 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
             { id:"facets",   label:"Грани" },
             { id:"longterm", label:"Интеграция" },
             { id:"analysis", label:"Анализ", locked: !isPremium },
+            { id:"locker",   label:"Шкафчик", folder:true },
           ].map(docu => (
             <button key={docu.id} onClick={() => setTab(docu.id)}
               style={{ background:"none", border:"none", cursor:"pointer", padding:"8px 2px",
                 display:"flex", flexDirection:"column", alignItems:"center", gap:5 }}>
               <div style={{ position:"relative" }}>
-                <DocIcon size={40} />
+                {docu.folder ? <FolderIcon size={40} open /> : <DocIcon size={40} />}
                 {docu.locked && <div style={{ position:"absolute", bottom:8, right:0 }}><LockBadge size={18} /></div>}
               </div>
               <div style={{ fontSize:11, fontWeight:700, color:T.ink, whiteSpace:"nowrap" }}>{docu.label}</div>
@@ -2233,6 +2368,10 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
 
       {tab==="analysis" && (
         <AnalysisTab session={session} isPremium={isPremium} onUpgrade={onUpgrade} onSaveAnalysis={onSaveAnalysis} />
+      )}
+
+      {tab==="locker" && (
+        <ThoughtLocker session={session} onUpdateSession={onUpdateSession} />
       )}
 
       {/* Delete button */}
