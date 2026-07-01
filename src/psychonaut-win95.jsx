@@ -282,6 +282,7 @@ const css = `
   .tl-tile:active{ box-shadow:var(--sunken); }
   .tl-swb{ box-shadow:var(--raised); cursor:pointer; }
   .tl-swb.on{ box-shadow:var(--sunken); }
+  .tl-ta::placeholder{ font-size:10px; opacity:1; }
   img.emoji { width:1em; height:1em; display:inline-block; vertical-align:middle; margin:0; }
   ::selection{ background:#000080; color:#fff; }
   ::-webkit-scrollbar{ width:15px; height:15px; }
@@ -773,7 +774,7 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker }
               </div>
               <div style={{ flex:1, padding:3 }}>
                 <div onClick={() => { setMenuOpen(false); if (onLocker) onLocker(); }}
-                  style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Шкафчик мыслей</div>
+                  style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Черновики</div>
                 {NAV.map(({ id, label }) => (
                   <div key={id} onClick={() => { setMenuOpen(false); onChange(id); }}
                     style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>{label}</div>
@@ -1986,7 +1987,7 @@ ${facetLabels[k]}: ${v}`;
   }
 
   if (Array.isArray(lockerThoughts) && lockerThoughts.length) {
-    text += `\n\nМЫСЛИ, ПРИШЕДШИЕ ПОЗЖЕ (шкафчик мыслей):`;
+    text += `\n\nЧЕРНОВИКИ К ЭТОЙ СЕССИИ:`;
     lockerThoughts.forEach(t => { if (t && t.text) text += `\n— ${t.text}`; });
   }
 
@@ -2168,14 +2169,16 @@ function LockerNote({ size = 22 }) {
   );
 }
 
-function CatalogIcon({ size = 40 }) {
+function StackIcon({ size = 40 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" style={{ flex:"none" }} aria-hidden="true">
-      <rect x="12" y="3" width="16" height="5" fill="#fff" stroke="#000" />
-      <rect x="9" y="7" width="22" height="6" fill="#ffd54a" stroke="#000" />
-      <rect x="5.5" y="12.5" width="29" height="22" fill="#cfcfcf" stroke="#000" />
-      <line x1="5.5" y1="19" x2="34.5" y2="19" stroke="#808080" />
-      <rect x="16" y="24" width="8" height="4" fill="#808080" stroke="#000" />
+      <rect x="7" y="9" width="21" height="27" fill="#fff" stroke="#000" />
+      <rect x="10" y="6" width="21" height="27" fill="#fff" stroke="#000" />
+      <path d="M13 3 H29 L33 7 V33 H13 Z" fill="#fff" stroke="#000" />
+      <path d="M29 3 V7 H33" fill="none" stroke="#000" />
+      <line x1="16" y1="13" x2="30" y2="13" stroke="#808080" />
+      <line x1="16" y1="17" x2="30" y2="17" stroke="#808080" />
+      <line x1="16" y1="21" x2="26" y2="21" stroke="#808080" />
     </svg>
   );
 }
@@ -2213,14 +2216,17 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
   return (
     <Screen>
       <BackBtn onClick={onBack} />
-      <SectionTitle size={28}>ШКАФЧИК МЫСЛЕЙ</SectionTitle>
-      <Sub>Сюда можно докидывать короткие мысли, которые приходят уже после сессии, в разные дни. Всё хранится в твоём Telegram.</Sub>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <StackIcon size={30} />
+        <SectionTitle size={28}>ЧЕРНОВИКИ</SectionTitle>
+      </div>
+      <Sub>Сюда можно докидывать короткие мысли, которые приходят до, во время или после сессии, в разные дни. Всё хранится в твоём Telegram.</Sub>
 
       <div style={{ background:"var(--surface)", boxShadow:"var(--raised)", padding:3, marginTop:16 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, background:"var(--titlebar)", color:"#fff",
           fontWeight:700, fontSize:12, padding:"3px 4px", fontFamily:"'Montserrat', sans-serif" }}>
-          <CatalogIcon size={15} />
-          <span>Шкафчик мыслей</span>
+          <StackIcon size={15} />
+          <span>Черновики</span>
         </div>
         <div style={{ padding:5 }}>
           <button className="tl-btn" onClick={openNew} style={{ fontFamily:"'Montserrat', sans-serif" }}>+ Новая мысль</button>
@@ -2263,13 +2269,13 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
               <span style={{ flex:1 }}>{openId === null ? "Новая мысль" : "Мысль"}</span>
               <button className="tl-btn" onClick={closeModal} aria-label="Закрыть" style={{ width:20, height:18, fontSize:12, padding:0, lineHeight:1 }}>✕</button>
             </div>
-            <div style={{ padding:"6px 5px 0" }}>
-              <textarea value={draft.text} onChange={e => setDraft({ ...draft, text:e.target.value })}
+            <div style={{ padding:"6px 6px 0" }}>
+              <textarea className="tl-ta" value={draft.text} onChange={e => setDraft({ ...draft, text:e.target.value })}
                 placeholder="🎤 можно диктовать через микрофон на клавиатуре"
-                style={{ minHeight:96, fontSize:11, fontFamily:"'Montserrat', sans-serif" }} />
+                style={{ minHeight:96, fontSize:12, fontFamily:"'Montserrat', sans-serif" }} />
             </div>
-            <div style={{ fontSize:11, color:T.ink, fontWeight:700, margin:"10px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>Привязать к сессии:</div>
-            <div style={{ padding:"0 5px", position:"relative" }}>
+            <div style={{ fontSize:11, color:T.ink, fontWeight:700, margin:"10px 6px 4px", fontFamily:"'Montserrat', sans-serif" }}>Привязать к сессии:</div>
+            <div style={{ padding:"0 6px", position:"relative" }}>
               <div onClick={() => setSelOpen(o => !o)}
                 style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
                   background:"#fff", boxShadow:"var(--sunken)", padding:"7px 4px 7px 8px",
@@ -2284,7 +2290,7 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
               {selOpen && (
                 <>
                   <div onClick={() => setSelOpen(false)} style={{ position:"fixed", inset:0, zIndex:3100 }} />
-                  <div style={{ position:"absolute", top:"calc(100% + 2px)", left:5, right:5, zIndex:3101,
+                  <div style={{ position:"absolute", top:"calc(100% + 2px)", left:6, right:6, zIndex:3101,
                     background:"#fff", border:"2px solid #000080", boxShadow:"3px 3px 8px rgba(0,0,0,0.45)",
                     maxHeight:200, overflowY:"auto" }}>
                     {[{ id:"", label:"Без привязки" }].concat(doneSessions.map(sn => ({ id:String(sn.id), label:(sn.substance || "Сессия") + " · " + (sn.date || "") }))).map(opt => {
@@ -2302,11 +2308,11 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
                 </>
               )}
             </div>
-            <div style={{ fontSize:11, color:"#333", margin:"5px 5px 0", lineHeight:1.5, fontFamily:"'Montserrat', sans-serif" }}>
+            <div style={{ fontSize:11, color:"#333", margin:"5px 6px 0", lineHeight:1.5, fontFamily:"'Montserrat', sans-serif" }}>
               Привяжи мысль к сессии — сейчас или позже. Тогда она подтянется к разбору этого опыта. Мысль без привязки останется просто в шкафчике.
             </div>
-            <div style={{ fontSize:11, color:T.ink, fontWeight:700, margin:"10px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>Цвет плитки:</div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:5, padding:"0 5px" }}>
+            <div style={{ fontSize:11, color:T.ink, fontWeight:700, margin:"10px 6px 4px", fontFamily:"'Montserrat', sans-serif" }}>Цвет плитки:</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:5, padding:"0 6px" }}>
               {LOCKER_ORDER.map(k => (
                 <button key={k} className={"tl-swb" + (draft.color === k ? " on" : "")} onClick={() => setDraft({ ...draft, color:k })}
                   aria-label={k} style={{ width:"100%", height:26, boxSizing:"border-box", background:LOCKER_COLORS[k].bg, border:"none" }} />
@@ -2316,7 +2322,7 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
                   display:"flex", alignItems:"center", justifyContent:"center",
                   background:"repeating-linear-gradient(45deg,#fff,#fff 3px,#ddd 3px,#ddd 6px)" }}>нет</button>
             </div>
-            <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 5px 5px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 6px 6px" }}>
               <button className="tl-btn" onClick={del} style={{ visibility: openId === null ? "hidden" : "visible", fontFamily:"'Montserrat', sans-serif" }}>Удалить</button>
               <button className="tl-btn" onClick={save} style={{ fontFamily:"'Montserrat', sans-serif" }}>Готово</button>
             </div>
@@ -2600,7 +2606,7 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, 
           <button onClick={onLocker} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000080", border:"none",
             padding:"9px 16px", fontFamily:"'Montserrat', sans-serif",
             fontWeight:700, fontSize:14, cursor:"pointer" }}>
-            Шкафчик мыслей
+            Черновики
           </button>
           <button onClick={onNew} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000080", border:"none",
             padding:"9px 16px", fontFamily:"'Montserrat', sans-serif",
