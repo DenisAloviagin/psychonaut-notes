@@ -1329,15 +1329,14 @@ function StepDifficult({ data, onChange, onNext, onBack }) {
           <div style={{ fontSize:13, color:T.mid, lineHeight:1.6, marginBottom:14, fontFamily:"'Montserrat', sans-serif" }}>
             Ты не один в этом. Поддержка рядом.
           </div>
-          <a href="https://t.me/psychonaut_support_bot" style={{ display:"block", background:"var(--surface)", boxShadow:"var(--raised)",
+          <a href="https://ayawaskaretreat.com/ru/integration" target="_blank" rel="noopener noreferrer"
+            onClick={(e) => {
+              const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+              if (tg && tg.openLink) { e.preventDefault(); tg.openLink("https://ayawaskaretreat.com/ru/integration"); }
+            }}
+            style={{ display:"block", background:"var(--surface)", boxShadow:"var(--raised)",
             color:"#000080", padding:"13px", textDecoration:"none",
-            fontWeight:700, fontSize:14, textAlign:"center", fontFamily:"'Montserrat', sans-serif", marginBottom:8 }}>
-            @psychonaut_support_bot
-          </a>
-          <a href="https://ayawaskaretreat.com/ru/integration" style={{ display:"block", background:"transparent",
-            color:T.accent, padding:"12px", borderRadius:10, textDecoration:"none",
-            fontWeight:600, fontSize:13, textAlign:"center", fontFamily:"'Montserrat', sans-serif",
-            border:`1.5px solid ${T.accent}` }}>
+            fontWeight:700, fontSize:14, textAlign:"center", fontFamily:"'Montserrat', sans-serif" }}>
             ayawaskaretreat.com → Интеграция
           </a>
         </div>
@@ -2188,31 +2187,59 @@ function LockerNote({ size = 22 }) {
   );
 }
 
-function StackIcon({ size = 40 }) {
+function StackIcon({ size = 30 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" style={{ flex:"none" }} aria-hidden="true">
-      <rect x="7" y="9" width="21" height="27" fill="#fff" stroke="#000" />
-      <rect x="10" y="6" width="21" height="27" fill="#fff" stroke="#000" />
-      <path d="M13 3 H29 L33 7 V33 H13 Z" fill="#fff" stroke="#000" />
-      <path d="M29 3 V7 H33" fill="none" stroke="#000" />
-      <line x1="16" y1="13" x2="30" y2="13" stroke="#808080" />
-      <line x1="16" y1="17" x2="30" y2="17" stroke="#808080" />
-      <line x1="16" y1="21" x2="26" y2="21" stroke="#808080" />
+    <svg width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" style={{ flex:"none" }} aria-hidden="true">
+      <rect x="4" y="2" width="8" height="11" fill="#fff" stroke="#000" />
+      <rect x="2" y="4" width="9" height="10" fill="#fff" stroke="#000" />
+      <line x1="4" y1="7" x2="9" y2="7" stroke="#808080" />
+      <line x1="4" y1="9" x2="9" y2="9" stroke="#808080" />
+      <line x1="4" y1="11" x2="7" y2="11" stroke="#808080" />
     </svg>
   );
 }
 
 function HeadBook() {
-  return (<svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flex:"none" }} aria-hidden="true"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>);
+  return (
+    <svg width={30} height={30} viewBox="0 0 16 16" shapeRendering="crispEdges" style={{ flex:"none" }} aria-hidden="true">
+      <rect x="3" y="2" width="9" height="12" fill="#2c5fbf" stroke="#000" />
+      <rect x="3" y="2" width="2" height="12" fill="#1b3f8f" />
+      <rect x="6" y="6" width="4" height="1" fill="#f1c40f" />
+      <rect x="6" y="8" width="3" height="1" fill="#f1c40f" />
+      <rect x="10" y="2" width="1" height="4" fill="#c0392b" />
+    </svg>
+  );
 }
 function HeadAlert() {
-  return (<svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flex:"none" }} aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.6" fill="currentColor" stroke="none"/></svg>);
+  return (
+    <svg width={30} height={30} viewBox="0 0 16 16" shapeRendering="crispEdges" style={{ flex:"none" }} aria-hidden="true">
+      <polygon points="8,2 14,13 2,13" fill="#f1c40f" stroke="#000" strokeLinejoin="miter" />
+      <rect x="7" y="6" width="2" height="3" fill="#000" />
+      <rect x="7" y="10" width="2" height="2" fill="#000" />
+    </svg>
+  );
 }
 function HeadHex() {
-  return (<svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flex:"none" }} aria-hidden="true"><polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/><polygon points="12,7 17,10 17,14 12,17 7,14 7,10"/></svg>);
+  return (
+    <svg width={30} height={30} viewBox="0 0 16 16" style={{ flex:"none" }} aria-hidden="true">
+      <circle cx="8" cy="8" r="6.5" fill="#eef6e8" stroke="#000" />
+      <circle cx="8" cy="8" r="4" fill="none" stroke="#27ae60" />
+      <line x1="8" y1="1.5" x2="8" y2="14.5" stroke="#000" shapeRendering="crispEdges" />
+      <line x1="1.5" y1="8" x2="14.5" y2="8" stroke="#000" shapeRendering="crispEdges" />
+      <line x1="8" y1="8" x2="13" y2="4" stroke="#27ae60" strokeWidth="1.2" />
+      <circle cx="8" cy="8" r="1.4" fill="#c0392b" />
+    </svg>
+  );
 }
 function HeadMusic() {
-  return (<svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flex:"none" }} aria-hidden="true"><path d="M9 18V5l10-2v11"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>);
+  return (
+    <svg width={30} height={30} viewBox="0 0 16 16" shapeRendering="crispEdges" style={{ flex:"none" }} aria-hidden="true">
+      <rect x="1" y="6" width="3" height="4" fill="#808080" stroke="#000" />
+      <polygon points="4,6 4,10 8,13 8,3" fill="#c0c0c0" stroke="#000" />
+      <path d="M10 5 Q12 8 10 11" fill="none" stroke="#1084d0" strokeWidth="1" shapeRendering="auto" />
+      <path d="M11.5 3 Q14.5 8 11.5 13" fill="none" stroke="#1084d0" strokeWidth="1" shapeRendering="auto" />
+    </svg>
+  );
 }
 
 function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
@@ -2221,10 +2248,13 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
   const [selOpen, setSelOpen] = useState(false);
   const pressTimer = useRef(null);
 
-  const doneSessions = (sessions || []).filter(s => s.status === "done");
+  const attachSessions = sessions || [];
+  function labelOf(sn) {
+    return (sn.substance || "Сессия") + " · " + (sn.date || "") + (sn.status === "draft" ? " · не завершена" : "");
+  }
   function sessionLabel(sid) {
-    const sn = doneSessions.find(x => String(x.id) === String(sid));
-    return sn ? ((sn.substance || "Сессия") + " · " + (sn.date || "")) : "Без привязки";
+    const sn = attachSessions.find(x => String(x.id) === String(sid));
+    return sn ? labelOf(sn) : "Без привязки";
   }
 
   function openNew() { setDraft({ text:"", color:"none", sid:"" }); setOpenId(null); }
@@ -2325,7 +2355,7 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
                   <div style={{ position:"absolute", top:"calc(100% + 2px)", left:6, right:6, zIndex:3101,
                     background:"#fff", border:"2px solid #000080", boxShadow:"3px 3px 8px rgba(0,0,0,0.45)",
                     maxHeight:200, overflowY:"auto" }}>
-                    {[{ id:"", label:"Без привязки" }].concat(doneSessions.map(sn => ({ id:String(sn.id), label:(sn.substance || "Сессия") + " · " + (sn.date || "") }))).map(opt => {
+                    {[{ id:"", label:"Без привязки" }].concat(attachSessions.map(sn => ({ id:String(sn.id), label:labelOf(sn) }))).map(opt => {
                       const sel = String(draft.sid) === opt.id;
                       return (
                         <div key={opt.id || "none"} onClick={() => { setDraft(d => ({ ...d, sid:opt.id })); setSelOpen(false); }}
@@ -2630,9 +2660,10 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, 
   return (
     <Screen>
       <div style={{ marginBottom:24 }}>
-        <div style={{ background:"var(--surface)", boxShadow:"var(--sunken)", padding:"7px 12px",
-          fontSize:14, fontWeight:600, color:T.ink, letterSpacing:"0.03em", textTransform:"uppercase",
+        <div style={{ background:"#008080", boxShadow:"var(--sunken)", padding:"7px 12px",
+          fontSize:14, fontWeight:600, color:"#fff", letterSpacing:"0.03em", textTransform:"uppercase",
           textAlign:"center", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+          textShadow:"0 1px 0 rgba(0,0,0,0.35)",
           fontFamily:"'Montserrat', sans-serif" }}>
           Интеграция психоделического опыта
         </div>
@@ -3623,6 +3654,7 @@ function LibraryPage() {
   const [openSection, setOpenSection] = useState(null);
   const [openArticle, setOpenArticle] = useState(null);
   const articleRefs = useRef({});
+  const sectionRefs = useRef({});
   useEffect(() => {
     if (!openArticle) return;
     const el = articleRefs.current[openArticle];
@@ -3635,6 +3667,18 @@ function LibraryPage() {
     });
   }, [openArticle]);
 
+  useEffect(() => {
+    if (openSection === null) return;
+    const el = sectionRefs.current[openSection];
+    if (!el) return;
+    requestAnimationFrame(() => {
+      try {
+        const y = el.getBoundingClientRect().top + window.scrollY - 56;
+        window.scrollTo({ top: y < 0 ? 0 : y, behavior: "smooth" });
+      } catch (e) {}
+    });
+  }, [openSection]);
+
   return (
     <Screen>
       <div style={{ display:"flex", alignItems:"center", gap:10, color:"#000", marginBottom:6 }}>
@@ -3644,7 +3688,7 @@ function LibraryPage() {
 
       <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
         {LIBRARY_SECTIONS.map((section, si) => (
-          <div key={section.id}>
+          <div key={section.id} ref={el => { if (el) sectionRefs.current[si] = el; }}>
             {/* Section header */}
             <button onClick={() => {
               setOpenSection(openSection === si ? null : si);
