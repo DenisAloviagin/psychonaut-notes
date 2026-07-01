@@ -134,22 +134,26 @@ function linkify(text) {
   const parts = String(text).split(/(https?:\/\/[^\s]+|t\.me\/[^\s]+)/g);
   return parts.map((part, i) => {
     if (/^(https?:\/\/|t\.me\/)/.test(part)) {
-      const href = part.startsWith("t.me/") ? "https://" + part : part;
-      const isTg = /t\.me\//.test(part);
+      const core = part.replace(/[.,!?;:»)\]]+$/, "");
+      const trail = part.slice(core.length);
+      const href = core.startsWith("t.me/") ? "https://" + core : core;
+      const isTg = /t\.me\//.test(core);
       return (
-        <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-          onClick={(e) => {
-            const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
-            if (tg) {
-              e.preventDefault();
-              if (isTg && tg.openTelegramLink) tg.openTelegramLink(href);
-              else if (tg.openLink) tg.openLink(href);
-              else window.open(href, "_blank");
-            }
-          }}
-          style={{ color: "#c0392b", textDecoration: "underline", wordBreak: "break-word" }}>
-          {part}
-        </a>
+        <span key={i}>
+          <a href={href} target="_blank" rel="noopener noreferrer"
+            onClick={(e) => {
+              const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+              if (tg) {
+                e.preventDefault();
+                if (isTg && tg.openTelegramLink) tg.openTelegramLink(href);
+                else if (tg.openLink) tg.openLink(href);
+                else window.open(href, "_blank");
+              }
+            }}
+            style={{ color: "#c0392b", textDecoration: "underline", wordBreak: "break-word" }}>
+            {core}
+          </a>{trail}
+        </span>
       );
     }
     return part;
@@ -193,35 +197,35 @@ const FACET_SUBTITLES = {
   spirit:    "Эти вопросы не требуют религиозных убеждений. Они требуют только честности.",
   relations: "Как опыт повлиял на то, как ты видишь людей вокруг?",
   nature:    "Как опыт изменил твоё отношение к природному миру?",
-  lifestyle: "Инсайт который не становится действием — остаётся просто мыслью.",
+  lifestyle: "Инсайт который не становится действием, остаётся просто мыслью.",
 };
 
 const FACET_QUESTIONS = {
   mind: [
     "Какие мысли или идеи были самыми яркими во время опыта?",
-    "Какие убеждения о себе ты увидел — полезные или ограничивающие?",
+    "Какие убеждения о себе ты увидел, полезные или ограничивающие?",
     "Изменилось ли что-то в том, как ты думаешь о себе или о жизни?",
     "Есть ли паттерн мышления который хочется изменить? Как это могло бы выглядеть?",
-    "Какой вопрос остался открытым — и как ты можешь продолжить его исследовать?",
+    "Какой вопрос остался открытым, и как ты можешь продолжить его исследовать?",
   ],
   body: [
-    "Когда ты вспоминаешь опыт — что чувствуешь в теле? Где именно?",
-    "Были ли во время опыта интенсивные телесные ощущения — тепло, холод, напряжение, лёгкость?",
+    "Когда ты вспоминаешь опыт, что чувствуешь в теле? Где именно?",
+    "Были ли во время опыта интенсивные телесные ощущения, тепло, холод, напряжение, лёгкость?",
     "Изменилось ли что-то в твоём отношении к телу после опыта?",
     "Какая практика помогает тебе сейчас оставаться в теле?",
   ],
   spirit: [
-    "Было ли во время опыта ощущение чего-то большего — единства, растворения границ?",
+    "Было ли во время опыта ощущение чего-то большего, единства, растворения границ?",
     "Изменилось ли что-то в твоём ощущении смысла или цели?",
-    "Что стало важнее после опыта — а что потеряло значение?",
+    "Что стало важнее после опыта, а что потеряло значение?",
     "Есть ли практика которая помогает поддерживать эту связь в повседневной жизни?",
   ],
   relations: [
     "Как опыт повлиял на то, как ты видишь людей вокруг?",
     "Что изменилось в том, как ты воспринимаешь близких людей?",
-    "Есть ли отношения которые хочется изменить — углубить, восстановить, или отпустить?",
+    "Есть ли отношения которые хочется изменить, углубить, восстановить, или отпустить?",
     "Есть ли разговор который давно нужно было состояться? С кем и о чём?",
-    "Есть ли кто-то кому ты хочешь сказать спасибо — или попросить прощения?",
+    "Есть ли кто-то кому ты хочешь сказать спасибо, или попросить прощения?",
   ],
   nature: [
     "Было ли во время опыта ощущение связи с природой или живым миром?",
@@ -297,7 +301,7 @@ const css = `
 function Style() {
   return (
     <>
-      {/* Опционально: настоящий пиксельный шрифт на деплое. В песочнице может не грузиться — вид держится на CSS выше. */}
+      {/* Опционально: настоящий пиксельный шрифт на деплое. В песочнице может не грузиться, вид держится на CSS выше. */}
       <link rel="stylesheet" href="https://unpkg.com/98.css" />
       <style>{css}</style>
     </>
@@ -340,7 +344,7 @@ function AccentBar() {
       )}
       {showMinimizeHint && (
         <MessageBox title="Свернуть"
-          message="Свернуть приложение можно жестом Telegram: потяни вниз за верхнюю полоску с названием бота. Эта кнопка только для вида."
+          message="Свернуть приложение можно жестом Telegram: потяни вниз за верхнюю полоску с названием бота."
           confirmLabel="Понятно"
           onConfirm={() => setShowMinimizeHint(false)} />
       )}
@@ -349,16 +353,25 @@ function AccentBar() {
 }
 
 function Screen({ children, pad = "52px 10px 96px" }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    try { window.scrollTo(0, 0); } catch {}
+    try {
+      if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    } catch {}
+    if (ref.current) ref.current.scrollTop = 0;
+  }, []);
   return (
-    <div style={{ minHeight:"100vh", background:"var(--surface)", padding:pad, overflowY:"auto" }}>
+    <div ref={ref} style={{ minHeight:"100vh", background:"var(--surface)", padding:pad, overflowY:"auto" }}>
       {children}
     </div>
   );
 }
 
-function SectionTitle({ children, size = 36 }) {
+function SectionTitle({ children, size = 36, style = {} }) {
   return (
-    <div style={{ fontSize:Math.min(size,28), fontWeight:700, letterSpacing:"0.02em", color:"#000", lineHeight:1.05, marginBottom:6 }}>
+    <div style={{ fontSize:Math.min(size,28), fontWeight:700, letterSpacing:"0.02em", color:"#000", lineHeight:1.05, marginBottom:6, ...style }}>
       {children}
     </div>
   );
@@ -387,7 +400,7 @@ function Folder({ open, size = 18 }) {
   );
 }
 
-// Пиксельные иконки граней (яркие, в своём цвете) — для экрана «Оценка»
+// Пиксельные иконки граней (яркие, в своём цвете), для экрана «Оценка»
 const FACET_ICON_COLORS = {
   mind:"#2a9fd0", body:"#f0801a", spirit:"#a763c9",
   relations:"#d957a8", nature:"#2fb457", lifestyle:"#e2483a",
@@ -421,7 +434,7 @@ function FacetIcon({ facet, size = 22 }) {
 }
 
 // Тематический дропдаун вместо нативного <select> (родное меню iOS/Android стилизовать нельзя)
-function WinSelect({ value, onChange, options, placeholder = "— выбрать —" }) {
+function WinSelect({ value, onChange, options, placeholder = "выбрать" }) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ position:"relative" }}>
@@ -810,7 +823,7 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker }
 
       {about && (
         <MessageBox title="О программе"
-          message="Заметки психонавта — инструмент интеграции психоделического опыта."
+          message="Заметки психонавта это инструмент интеграции психоделического опыта."
           confirmLabel="OK" onConfirm={() => setAbout(false)} onCancel={() => setAbout(false)} />
       )}
 
@@ -907,7 +920,7 @@ function StepCover({ data, onChange, onNext }) {
         </div>
 
         <QuoteBox>
-          Один трип может изменить всё. Интеграция — это то, что делает это изменение реальным.
+          Один трип может изменить всё. Интеграция это то, что делает это изменение реальным.
         </QuoteBox>
 
         <Btn onClick={onNext} disabled={!s.substance}>Далее →</Btn>
@@ -928,7 +941,7 @@ function StepIntention({ data, onChange, onNext, onBack }) {
         <Folder open size={24} />
         <SectionTitle size={28}>НАМЕРЕНИЕ</SectionTitle>
       </div>
-      <Sub>Намерение — это вопрос с которым ты входишь. Направление внимания.</Sub>
+      <Sub>Намерение это вопрос с которым ты входишь. Направление внимания.</Sub>
 
       <ProgressBar current={1} />
 
@@ -952,7 +965,7 @@ function StepIntention({ data, onChange, onNext, onBack }) {
         </div>
 
         <QuoteBox>
-          Намерение не управляет опытом. Но оно задаёт контекст. Поставь — и отпусти.
+          Намерение не управляет опытом. Но оно задаёт контекст. Поставь, и отпусти.
         </QuoteBox>
 
         <Btn onClick={onNext} disabled={!s.intention_main?.trim()}>Далее →</Btn>
@@ -973,7 +986,7 @@ function StepAfter72({ data, onChange, onNext, onSkip, onBack }) {
         <Folder open size={24} />
         <SectionTitle size={28}>СРАЗУ ПОСЛЕ</SectionTitle>
       </div>
-      <Sub>Первые 72 часа — самое свежее и уязвимое время. Пиши как попало: обрывками, образами, словами. Главное — зафикси пока не растворилось.</Sub>
+      <Sub>Первые 72 часа, самое свежее и уязвимое время. Пиши как попало: обрывками, образами, словами. Главное, зафикси пока не растворилось.</Sub>
 
       <ProgressBar current={2} />
 
@@ -982,17 +995,17 @@ function StepAfter72({ data, onChange, onNext, onSkip, onBack }) {
       <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
         <div>
           <Label>Что было самым ярким? Образы, ощущения, слова которые пришли?</Label>
-          <textarea rows={5} placeholder="без структуры, без редактуры — всё что помнишь"
+          <textarea rows={5} placeholder="без структуры, без редактуры, всё что помнишь"
             value={s.after_vivid||""} onChange={e => f("after_vivid", e.target.value)} />
         </div>
         <div>
-          <Label>Что я чувствую прямо сейчас — в теле, в эмоциях?</Label>
-          <textarea rows={4} placeholder="тело знает — доверяй ему"
+          <Label>Что я чувствую прямо сейчас, в теле, в эмоциях?</Label>
+          <textarea rows={4} placeholder="тело знает, доверяй ему"
             value={s.after_feeling||""} onChange={e => f("after_feeling", e.target.value)} />
         </div>
         <div>
           <Label>Как опыт откликнулся на моё намерение?</Label>
-          <textarea rows={4} placeholder="пришло ли то, что искал — или что-то совсем другое"
+          <textarea rows={4} placeholder="пришло ли то, что искал, или что-то совсем другое"
             value={s.after_intention||""} onChange={e => f("after_intention", e.target.value)} />
         </div>
         <div>
@@ -1005,7 +1018,7 @@ function StepAfter72({ data, onChange, onNext, onSkip, onBack }) {
           <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:T.muted, marginBottom:8 }}>
             Свободная запись
           </div>
-          <textarea rows={5} placeholder="символы, образы которые хочется зафиксировать — всё что не вошло выше"
+          <textarea rows={5} placeholder="символы, образы которые хочется зафиксировать, всё что не вошло выше"
             value={s.after_free||""} onChange={e => f("after_free", e.target.value)} />
         </div>
 
@@ -1132,7 +1145,7 @@ function StepModes({ data, onChange, onNext, onBack }) {
       <div style={{ marginTop:8, marginBottom:20 }}>
         <Label>Что это говорит тебе о том, как работать с этими заметками прямо сейчас?</Label>
         <textarea rows={4}
-          placeholder="нет правильных ответов — есть те, которые честны для тебя прямо сейчас"
+          placeholder="нет правильных ответов, есть те, которые честны для тебя прямо сейчас"
           value={s.modes_reflection||""}
           onChange={e => onChange({ ...s, modes_reflection: e.target.value })} />
       </div>
@@ -1153,7 +1166,7 @@ function StepFacetsNav({ data, onFacet, onNext, onSkip, onBack }) {
         <Folder open size={24} />
         <SectionTitle size={28}>ШЕСТЬ ГРАНЕЙ</SectionTitle>
       </div>
-      <Sub>Работай со всеми шестью — или с теми которые откликаются прямо сейчас. Нет правильного порядка.</Sub>
+      <Sub>Работай со всеми шестью, или с теми которые откликаются прямо сейчас. Нет правильного порядка.</Sub>
 
       <ProgressBar current={5} />
 
@@ -1276,7 +1289,7 @@ function StepDifficult({ data, onChange, onNext, onBack }) {
         <Folder open size={24} />
         <SectionTitle size={28}>СЛОЖНЫЙ ОПЫТ</SectionTitle>
       </div>
-      <Sub>Если опыт был тяжёлым — эти страницы для тебя. Если опыт не кажется тебе сложным — этот раздел заполнять не нужно.</Sub>
+      <Sub>Если опыт был тяжёлым, эти страницы для тебя. Если опыт не кажется тебе сложным этот раздел заполнять не нужно.</Sub>
 
       <ProgressBar current={3} />
 
@@ -1294,7 +1307,7 @@ function StepDifficult({ data, onChange, onNext, onBack }) {
             value={s.diff_feel||""} onChange={e => f("diff_feel", e.target.value)} />
         </div>
         <div>
-          <Label>Есть ли в этом опыте что-то что может иметь ценность — даже если сейчас это неочевидно?</Label>
+          <Label>Есть ли в этом опыте что-то что может иметь ценность, даже если сейчас это неочевидно?</Label>
           <textarea rows={4} placeholder="трудное не значит плохое"
             value={s.diff_value||""} onChange={e => f("diff_value", e.target.value)} />
         </div>
@@ -1314,7 +1327,7 @@ function StepDifficult({ data, onChange, onNext, onBack }) {
             ЕСЛИ ПРЯМО СЕЙЧАС ОЧЕНЬ ТЯЖЕЛО
           </div>
           <div style={{ fontSize:13, color:T.mid, lineHeight:1.6, marginBottom:14, fontFamily:"'Montserrat', sans-serif" }}>
-            Ты не один в этом. Поддержка — рядом.
+            Ты не один в этом. Поддержка рядом.
           </div>
           <a href="https://t.me/psychonaut_support_bot" style={{ display:"block", background:"var(--surface)", boxShadow:"var(--raised)",
             color:"#000080", padding:"13px", textDecoration:"none",
@@ -1339,7 +1352,7 @@ function StepDifficult({ data, onChange, onNext, onBack }) {
 
 // ── Period Accordion ──────────────────────────────────────────────────────────
 const PERIODS = [
-  ["week",  "Первая неделя",    "Нейропластическое окно открыто — самое продуктивное время."],
+  ["week",  "Первая неделя",    "Нейропластическое окно открыто, самое продуктивное время."],
   ["month", "Первый месяц",     "Видно что реально изменилось, а что просто казалось."],
   ["three", "Три месяца",       "Паттерны стабилизируются, долгосрочные сдвиги видны."],
   ["year",  "Полгода и дальше", "Глубокие изменения проявляются именно здесь."],
@@ -1347,8 +1360,8 @@ const PERIODS = [
 
 const LONGTERM_QUESTIONS = [
   ["q1","Как инсайты из опыта живут в моей жизни прямо сейчас?"],
-  ["q2","Что изменилось с момента опыта — в мышлении, в отношениях, в действиях?"],
-  ["q3","Что ещё не изменилось — но хочется изменить?"],
+  ["q2","Что изменилось с момента опыта, в мышлении, в отношениях, в действиях?"],
+  ["q3","Что ещё не изменилось, но хочется изменить?"],
   ["q4","Моё новое намерение на следующий период:"],
 ];
 
@@ -1401,7 +1414,7 @@ function PeriodAccordion({ entries, onChange }) {
               <span style={{ fontWeight:700, fontSize:15, flexShrink:0, width:14, textAlign:"center" }}>{isOpen ? "\u2212" : "+"}</span>
             </button>
 
-            {/* Раскрытие — окно Win95 */}
+            {/* Раскрытие, окно Win95 */}
             {isOpen && (
               <div style={{ marginTop:4, background:"#c0c0c0", boxShadow: RAISED }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6,
@@ -1491,12 +1504,12 @@ function IntegrationAnalysis({ data, isPremium, onUpgrade }) {
         (e.q4 ? `Новое намерение: ${e.q4}\n` : "")
       ).join("\n");
 
-      const prompt = `Ты — инструмент психоделической интеграции. Человек ведёт дневник интеграции после психоделического опыта. Прочитай его записи во времени и напиши короткий анализ (200-300 слов):
+      const prompt = `Ты, инструмент психоделической интеграции. Человек ведёт дневник интеграции после психоделического опыта. Прочитай его записи во времени и напиши короткий анализ (200-300 слов):
 
-— Что меняется со временем, а что остаётся на месте
-— Какие паттерны повторяются в разных записях
-— Что кажется незавершённым или требует внимания
-— Один вопрос для углубления
+– Что меняется со временем, а что остаётся на месте
+– Какие паттерны повторяются в разных записях
+– Что кажется незавершённым или требует внимания
+– Один вопрос для углубления
 
 Будь честным зеркалом, не давай советов. Пиши на русском языке.
 
@@ -1531,7 +1544,7 @@ ${entries}`;
           </div>
           <div style={{ fontSize:12, color:T.mid, lineHeight:1.6, marginBottom:14,
             fontFamily:"'Montserrat', sans-serif" }}>
-            Claude прочитает твои записи интеграции и покажет динамику — что меняется, что застряло, какие паттерны повторяются.
+            Claude прочитает твои записи интеграции и покажет динамику, что меняется, что застряло, какие паттерны повторяются.
           </div>
           <Btn onClick={handleAnalyze}>
             {isPremium ? "Запросить анализ интеграции" : "Доступно в полной версии"}
@@ -1586,7 +1599,7 @@ function StepRating({ data, onChange, onFinish, onBack }) {
         <Folder open size={20} />
         <SectionTitle size={22}>ОЦЕНКА ГРАНЕЙ</SectionTitle>
       </div>
-      <Sub>Как ты ощущаешь каждую область жизни после этого опыта? Оцени честно — это только для тебя.</Sub>
+      <Sub>Как ты ощущаешь каждую область жизни после этого опыта? Оцени честно это только для тебя.</Sub>
       <ProgressBar current={6} />
 
       <div style={{ display:"flex", flexDirection:"column", gap:16, marginBottom:24 }}>
@@ -1703,7 +1716,9 @@ function TrackerPage({ sessions, isPremium, onUpgrade }) {
 
   if (!isPremium) return (
     <Screen>
-      <SectionTitle size={28}>ТРЕКЕР ГРАНЕЙ</SectionTitle>
+      <div style={{ display:"flex", alignItems:"center", gap:10, color:"#000", marginBottom:6 }}>
+        <HeadHex /><SectionTitle size={28} style={{ marginBottom: 0 }}>ТРЕКЕР ГРАНЕЙ</SectionTitle>
+      </div>
       <Sub>Визуализация изменений по 6 областям жизни</Sub>
       <div style={{ background:"var(--surface)", boxShadow:"var(--sunken)", padding:24, textAlign:"center", marginTop:20 }}>
         <div style={{ fontSize:40, marginBottom:12 }}>⬡</div>
@@ -1714,7 +1729,7 @@ function TrackerPage({ sessions, isPremium, onUpgrade }) {
         <div style={{ fontSize:13, color:T.mid, lineHeight:1.6, marginBottom:20,
           fontFamily:"'Montserrat', sans-serif" }}>
           Трекер показывает как меняются твои оценки по 6 областям жизни от сессии к сессии.
-          Два радара — твоя оценка и оценка Claude — чтобы увидеть расхождение.
+          Два радара, твоя оценка и оценка Claude, чтобы увидеть расхождение.
         </div>
         <Btn onClick={onUpgrade}>Открыть полный доступ</Btn>
       </div>
@@ -1726,7 +1741,9 @@ function TrackerPage({ sessions, isPremium, onUpgrade }) {
 
   if (rated.length === 0) return (
     <Screen>
-      <SectionTitle size={28}>ТРЕКЕР ГРАНЕЙ</SectionTitle>
+      <div style={{ display:"flex", alignItems:"center", gap:10, color:"#000", marginBottom:6 }}>
+        <HeadHex /><SectionTitle size={28} style={{ marginBottom: 0 }}>ТРЕКЕР ГРАНЕЙ</SectionTitle>
+      </div>
       <Sub>Пока нет сессий с оценками. Завершите первую сессию чтобы увидеть радар.</Sub>
     </Screen>
   );
@@ -1738,7 +1755,9 @@ function TrackerPage({ sessions, isPremium, onUpgrade }) {
 
   return (
     <Screen>
-      <SectionTitle size={28}>ТРЕКЕР ГРАНЕЙ</SectionTitle>
+      <div style={{ display:"flex", alignItems:"center", gap:10, color:"#000", marginBottom:6 }}>
+        <HeadHex /><SectionTitle size={28} style={{ marginBottom: 0 }}>ТРЕКЕР ГРАНЕЙ</SectionTitle>
+      </div>
       <Sub>Как меняются 6 областей твоей жизни</Sub>
 
       {/* Last session radar */}
@@ -1893,7 +1912,7 @@ function buildPrompt(session, lockerThoughts = []) {
   // Step 3: After 72h
   if (session.after_vivid) text += `
 
-СРАЗУ ПОСЛЕ — самое яркое: ${session.after_vivid}`;
+СРАЗУ ПОСЛЕ, самое яркое: ${session.after_vivid}`;
   if (session.after_feeling) text += `
 Ощущения в теле и эмоции: ${session.after_feeling}`;
   if (session.after_intention) text += `
@@ -1944,7 +1963,7 @@ ${modeLabels[id]}: ${val}`;
     if (!hasContent) return;
     text += `
 
-ГРАНЬ — ${facetLabels[key]}:`;
+ГРАНЬ, ${facetLabels[key]}:`;
     FACET_QUESTIONS[key].forEach((q, i) => {
       if (answers[i]?.trim()) text += `
 ${q}
@@ -1988,7 +2007,7 @@ ${facetLabels[k]}: ${v}`;
 
   if (Array.isArray(lockerThoughts) && lockerThoughts.length) {
     text += `\n\nЧЕРНОВИКИ К ЭТОЙ СЕССИИ:`;
-    lockerThoughts.forEach(t => { if (t && t.text) text += `\n— ${t.text}`; });
+    lockerThoughts.forEach(t => { if (t && t.text) text += `\n- ${t.text}`; });
   }
 
   return text;
@@ -2086,7 +2105,7 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
       <Card>
         <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, textAlign:"center",
           fontFamily:"'Montserrat', sans-serif" }}>
-          Заполни хотя бы одну грань или раздел «Сразу после» — тогда будет что анализировать.
+          Заполни хотя бы одну грань или раздел «Сразу после», тогда будет что анализировать.
         </div>
       </Card>
     </div>
@@ -2099,7 +2118,7 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
           <Card>
             <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, marginBottom:12,
               fontFamily:"'Montserrat', sans-serif" }}>
-              Я прочитаю всё что ты написал в этой сессии и отражу паттерны, противоречия и вопросы для углубления. Это не терапия — это зеркало.
+              Я прочитаю всё что ты написал в этой сессии и отражу паттерны, противоречия и вопросы для углубления. Это не терапия это зеркало.
             </div>
             <div style={{ fontSize:11, color:T.muted, lineHeight:1.6, marginBottom:14,
               fontFamily:"'Montserrat', sans-serif", background:T.bg, borderRadius:8, padding:"8px 12px" }}>
@@ -2183,6 +2202,19 @@ function StackIcon({ size = 40 }) {
   );
 }
 
+function HeadBook() {
+  return (<svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flex:"none" }} aria-hidden="true"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>);
+}
+function HeadAlert() {
+  return (<svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flex:"none" }} aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.6" fill="currentColor" stroke="none"/></svg>);
+}
+function HeadHex() {
+  return (<svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flex:"none" }} aria-hidden="true"><polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/><polygon points="12,7 17,10 17,14 12,17 7,14 7,10"/></svg>);
+}
+function HeadMusic() {
+  return (<svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flex:"none" }} aria-hidden="true"><path d="M9 18V5l10-2v11"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>);
+}
+
 function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
   const [openId, setOpenId] = useState(undefined);
   const [draft, setDraft] = useState({ text:"", color:"none", sid:"" });
@@ -2216,9 +2248,9 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
   return (
     <Screen>
       <BackBtn onClick={onBack} />
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
         <StackIcon size={30} />
-        <SectionTitle size={28}>ЧЕРНОВИКИ</SectionTitle>
+        <SectionTitle size={28} style={{ marginBottom: 0 }}>ЧЕРНОВИКИ</SectionTitle>
       </div>
       <Sub>Сюда можно докидывать короткие мысли, которые приходят до, во время или после сессии, в разные дни. Всё хранится в твоём Telegram.</Sub>
 
@@ -2229,12 +2261,12 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
           <span>Черновики</span>
         </div>
         <div style={{ padding:5 }}>
-          <button className="tl-btn" onClick={openNew} style={{ fontFamily:"'Montserrat', sans-serif" }}>+ Новая мысль</button>
+          <button className="tl-btn" onClick={openNew} style={{ fontFamily:"'Montserrat', sans-serif" }}>+ Новый черновик</button>
         </div>
         <div style={{ background:"#fff", boxShadow:"var(--sunken)", margin:"0 5px 5px", padding:10, minHeight:120 }}>
           {thoughts.length === 0 ? (
             <div style={{ fontSize:12, color:T.muted, textAlign:"center", padding:"24px 8px", lineHeight:1.6, fontFamily:"'Montserrat', sans-serif" }}>
-              Пока пусто. Добавь первую мысль кнопкой выше.
+              Пока пусто. Добавь первый черновик кнопкой выше.
             </div>
           ) : (
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
@@ -2266,7 +2298,7 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
           <div onClick={e => e.stopPropagation()} style={{ width:320, maxWidth:"100%", background:"var(--surface)", boxShadow:"var(--raised)", padding:3 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6, background:"var(--titlebar)", color:"#fff",
               fontWeight:700, fontSize:12, padding:"3px 4px", fontFamily:"'Montserrat', sans-serif" }}>
-              <span style={{ flex:1 }}>{openId === null ? "Новая мысль" : "Мысль"}</span>
+              <span style={{ flex:1 }}>{openId === null ? "Новый черновик" : "Черновик"}</span>
               <button className="tl-btn" onClick={closeModal} aria-label="Закрыть" style={{ width:20, height:18, fontSize:12, padding:0, lineHeight:1 }}>✕</button>
             </div>
             <div style={{ padding:"6px 6px 0" }}>
@@ -2309,18 +2341,20 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
               )}
             </div>
             <div style={{ fontSize:11, color:"#333", margin:"5px 6px 0", lineHeight:1.5, fontFamily:"'Montserrat', sans-serif" }}>
-              Привяжи мысль к сессии — сейчас или позже. Тогда она подтянется к разбору этого опыта. Мысль без привязки останется просто в шкафчике.
+              Привяжи мысль к сессии сейчас или позже. Тогда она подтянется к разбору этого опыта. Без привязки мысль останется просто в черновиках.
             </div>
             <div style={{ fontSize:11, color:T.ink, fontWeight:700, margin:"10px 6px 4px", fontFamily:"'Montserrat', sans-serif" }}>Цвет плитки:</div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:5, padding:"0 6px" }}>
-              {LOCKER_ORDER.map(k => (
-                <button key={k} className={"tl-swb" + (draft.color === k ? " on" : "")} onClick={() => setDraft({ ...draft, color:k })}
-                  aria-label={k} style={{ width:"100%", height:26, boxSizing:"border-box", background:LOCKER_COLORS[k].bg, border:"none" }} />
-              ))}
-              <button className={"tl-swb" + (draft.color === "none" ? " on" : "")} onClick={() => setDraft({ ...draft, color:"none" })}
-                aria-label="без цвета" style={{ width:"100%", height:26, boxSizing:"border-box", fontSize:10, color:"#000", border:"none",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  background:"repeating-linear-gradient(45deg,#fff,#fff 3px,#ddd 3px,#ddd 6px)" }}>нет</button>
+            <div style={{ padding:"0 6px" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:6, width:"100%" }}>
+                {LOCKER_ORDER.map(k => (
+                  <button key={k} className={"tl-swb" + (draft.color === k ? " on" : "")} onClick={() => setDraft({ ...draft, color:k })}
+                    aria-label={k} style={{ minWidth:0, height:26, boxSizing:"border-box", background:LOCKER_COLORS[k].bg, border:"none" }} />
+                ))}
+                <button className={"tl-swb" + (draft.color === "none" ? " on" : "")} onClick={() => setDraft({ ...draft, color:"none" })}
+                  aria-label="без цвета" style={{ minWidth:0, height:26, boxSizing:"border-box", fontSize:10, color:"#000", border:"none",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    background:"repeating-linear-gradient(45deg,#fff,#fff 3px,#ddd 3px,#ddd 6px)" }}>нет</button>
+              </div>
             </div>
             <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 6px 6px" }}>
               <button className="tl-btn" onClick={del} style={{ visibility: openId === null ? "hidden" : "visible", fontFamily:"'Montserrat', sans-serif" }}>Удалить</button>
@@ -2387,7 +2421,7 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
           )}
           {session.after_vivid && (
             <Card>
-              <Label>Сразу после — самое яркое</Label>
+              <Label>Сразу после, самое яркое</Label>
               <div style={{ fontSize:13, lineHeight:1.7, color:T.ink, whiteSpace:"pre-wrap", fontFamily:"'Montserrat', sans-serif" }}>
                 {session.after_vivid}
               </div>
@@ -2454,7 +2488,7 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
           </button>
         ) : (
           <MessageBox title="Удаление"
-            message="Удалить сессию? Действие нельзя отменить — все записи этой сессии будут удалены."
+            message="Удалить сессию? Действие нельзя отменить, все записи этой сессии будут удалены."
             confirmLabel="Удалить" cancelLabel="Отмена"
             onConfirm={onDelete} onCancel={() => setConfirmDelete(false)} />
         )}
@@ -2488,7 +2522,7 @@ function PrivacyPage({ onBack, onDeleteAll }) {
 
       <Card style={{ marginBottom:12 }}>
         <div style={{ fontWeight:700, fontSize:14, color:T.ink, marginBottom:8, fontFamily:"'Montserrat', sans-serif" }}>
-          Твои данные — твои
+          Твои данные, твои
         </div>
         <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, fontFamily:"'Montserrat', sans-serif" }}>
           Всё что ты пишешь в заметках, намерения, записи, ответы, хранится в твоём Telegram (CloudStorage). На наших серверах заметки не лежат.
@@ -2576,7 +2610,7 @@ function FirstLaunch({ onAccept }) {
           </div>
           <div style={{ fontSize:22, fontWeight:700, letterSpacing:"0.02em",
             color:"#000", textAlign:"center", marginBottom:14 }}>
-            ТВОИ ДАННЫЕ — ТВОИ
+            ТВОИ ДАННЫЕ, ТВОИ
           </div>
           <div style={{ fontSize:13, color:"#333", lineHeight:1.7, marginBottom:12 }}>
             Всё что ты пишешь в заметках хранится только в твоём Telegram аккаунте. Мы не видим это и не можем прочитать.
@@ -2623,7 +2657,7 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, 
             ЕЩЁ НЕТ ЗАПИСЕЙ
           </div>
           <div style={{ color:T.mid, fontSize:13, maxWidth:260, margin:"0 auto 28px", lineHeight:1.6, fontFamily:"'Montserrat', sans-serif" }}>
-            Один трип может изменить всё. Интеграция — это то что делает это изменение реальным.
+            Один трип может изменить всё. Интеграция это то что делает это изменение реальным.
           </div>
           <Btn onClick={onNew} style={{ maxWidth:220, margin:"0 auto" }}>Начать первую сессию</Btn>
         </div>
@@ -2654,7 +2688,7 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, 
       {!isPremium && sessions.length >= 1 && (
         <div style={{ background:"var(--surface)", boxShadow:"var(--sunken)", padding:18, marginTop:20, textAlign:"center" }}>
           <div style={{ fontSize:13, fontWeight:700, color:T.ink, marginBottom:4, fontFamily:"'Montserrat', sans-serif" }}>
-            1 сессия — бесплатно
+            1 сессия, бесплатно
           </div>
           <div style={{ fontSize:12, color:T.mid, marginBottom:14, fontFamily:"'Montserrat', sans-serif" }}>
             Открой полный доступ для продолжения работы
@@ -2701,7 +2735,7 @@ function UpgradePage({ onBack, onPurchase }) {
     setError("");
     setLoading(true);
     tg.openInvoice(invoiceLink, async (status) => {
-      // Не доверяем клиенту — перепроверяем оплату на сервере.
+      // Не доверяем клиенту, перепроверяем оплату на сервере.
       if (status === "paid") {
         let ok = false;
         for (let i = 0; i < 5; i++) {
@@ -2757,7 +2791,7 @@ function UpgradePage({ onBack, onPurchase }) {
         {[
           ["◎","Неограниченные сессии","Веди столько записей сколько нужно"],
           ["⊕","Анализ от Claude","Паттерны, противоречия и вопросы для углубления по каждой сессии"],
-          ["⬡","Трекер граней","Два радара — твоя оценка и оценка Claude — динамика по сессиям"],
+          ["⬡","Трекер граней","Два радара, твоя оценка и оценка Claude, динамика по сессиям"],
         ].map(([icon, title, desc], i, arr) => (
           <div key={title} style={{
             display:"flex", gap:16, padding:"16px",
@@ -2799,7 +2833,7 @@ function UpgradePage({ onBack, onPurchase }) {
 
 const LIBRARY_SECTIONS = [
   // ─────────────────────────────────────────────
-  // РАЗДЕЛ 1 — ПЕРЕД ОПЫТОМ
+  // РАЗДЕЛ 1, ПЕРЕД ОПЫТОМ
   // ─────────────────────────────────────────────
   {
     id: "before",
@@ -2827,96 +2861,96 @@ const LIBRARY_SECTIONS = [
       },
       {
         emoji: "🧭",
-        title: "Как понять — готов ли ты",
+        title: "Как понять, готов ли ты",
         tag: "Общее",
-        text: `Решение об участии в опыте всегда должно приниматься самостоятельно. Давление со стороны других людей — само по себе противопоказание.
+        text: `Решение об участии в опыте всегда должно приниматься самостоятельно. Давление со стороны других людей, само по себе противопоказание.
 
 Не стоит идти в опыт если:
-— Ты не знаком с веществом, его эффектами и рисками
-— Ты делаешь это под давлением или чтобы кому-то понравиться
-— Ты не доверяешь человеку который предлагает или ведёт
-— Ты переживаешь острый психологический кризис, тяжёлую депрессию или недавнюю потерю — не потому что это невозможно, а потому что нужна дополнительная поддержка
-— Ты принимаешь антидепрессанты или психотропные препараты — обязательна консультация с врачом
-— Ты беременна или кормишь грудью
+– Ты не знаком с веществом, его эффектами и рисками
+– Ты делаешь это под давлением или чтобы кому-то понравиться
+– Ты не доверяешь человеку который предлагает или ведёт
+– Ты переживаешь острый психологический кризис, тяжёлую депрессию или недавнюю потерю, не потому что это невозможно, а потому что нужна дополнительная поддержка
+– Ты принимаешь антидепрессанты или психотропные препараты, обязательна консультация с врачом
+– Ты беременна или кормишь грудью
 
-Психологические противопоказания: биполярное расстройство, шизофрения, пограничное расстройство личности, история психотических эпизодов. С этими состояниями работа возможна — но только в клиническом контексте с подготовленным специалистом.
+Психологические противопоказания: биполярное расстройство, шизофрения, пограничное расстройство личности, история психотических эпизодов. С этими состояниями работа возможна, но только в клиническом контексте с подготовленным специалистом.
 
-Аяуаска, псилоцибин и другие классические психоделики — не панацея и не кратчайший путь. Это инструменты. При ненадлежащем использовании они могут усугубить проблемы или породить новые.`,
+Аяуаска, псилоцибин и другие классические психоделики, не панацея и не кратчайший путь. Это инструменты. При ненадлежащем использовании они могут усугубить проблемы или породить новые.`,
       },
       {
         emoji: "⚙️",
-        title: "Сет и сеттинг — шесть факторов опыта",
+        title: "Сет и сеттинг, шесть факторов опыта",
         tag: "Общее",
         text: `На природу и ценность любого психоделического опыта влияют шесть факторов. Именно о них нужно позаботиться заранее.
 
-1. Настрой (set) — твоё внутреннее состояние, намерения, страхи, ожидания
-2. Обстановка (setting) — физическое пространство и его атмосфера
-3. Вещество и доза — что именно и сколько
-4. Проводник / сопровождающий — кто рядом
-5. Сессия — структура самого опыта
-6. Ситуация — какая поддержка доступна после
+1. Настрой (set), твоё внутреннее состояние, намерения, страхи, ожидания
+2. Обстановка (setting), физическое пространство и его атмосфера
+3. Вещество и доза, что именно и сколько
+4. Проводник / сопровождающий, кто рядом
+5. Сессия, структура самого опыта
+6. Ситуация, какая поддержка доступна после
 
 Настрой и обстановка долгое время игнорировались в медицинских исследованиях. Но большая часть наших реакций на любой стимул зависит от контекста и того, как мы его воспринимаем.
 
-Идеально готовиться к путешествию как к трёхдневному процессу: день до — спокойствие, рефлексия, природа. День сессии — полностью под опыт. День после — осмысление, записи, интеграция.`,
+Идеально готовиться к путешествию как к трёхдневному процессу: день до, спокойствие, рефлексия, природа. День сессии, полностью под опыт. День после, осмысление, записи, интеграция.`,
       },
       {
         emoji: "🎯",
         title: "Как работать с намерением",
         tag: "Общее",
-        text: `Намерение — это не задание для вещества и не список требований к опыту. Это вопрос с которым ты входишь. Внутренний компас, а не маршрутный лист.
+        text: `Намерение это не задание для вещества и не список требований к опыту. Это вопрос с которым ты входишь. Внутренний компас, а не маршрутный лист.
 
-Запиши намерение заранее. Опытные проводники замечали: заранее поставленные вопросы помогают путешественнику направлять своё путешествие. Поделись намерением с проводником — это помогает быть на одной волне.
+Запиши намерение заранее. Опытные проводники замечали: заранее поставленные вопросы помогают путешественнику направлять своё путешествие. Поделись намерением с проводником это помогает быть на одной волне.
 
-Цели могут быть разными. Духовные — получить опыт единства, преодолеть убеждения которые больше не служат. Психологические — разобраться в паттернах, травмах, непрожитых чувствах. Социальные — улучшить отношения, понять как ты присутствуешь рядом с людьми.
+Цели могут быть разными. Духовные, получить опыт единства, преодолеть убеждения которые больше не служат. Психологические, разобраться в паттернах, травмах, непрожитых чувствах. Социальные, улучшить отношения, понять как ты присутствуешь рядом с людьми.
 
-Уменьши ожидания. Нереалистичные ожидания встречаются часто и мешают опыту. Аяуаска, псилоцибин и другие вещества покажут то что нужно — не обязательно то что хочется увидеть.
+Уменьши ожидания. Нереалистичные ожидания встречаются часто и мешают опыту. Аяуаска, псилоцибин и другие вещества покажут то что нужно, не обязательно то что хочется увидеть.
 
-Оставайся открытым любым возникающим опытам — даже если они не отвечают на твой вопрос напрямую.`,
+Оставайся открытым любым возникающим опытам, даже если они не отвечают на твой вопрос напрямую.`,
       },
       {
         emoji: "🍽️",
-        title: "Подготовка тела — питание и состояние",
+        title: "Подготовка тела, питание и состояние",
         tag: "Общее",
         text: `Физическая подготовка начинается за несколько дней до сессии, а не в день её проведения.
 
-Питание. Питайся легко и здорово за несколько дней до опыта. Последний приём пищи — примерно за 6 часов до начала. Утром в день сессии допустим лёгкий завтрак из фруктов или тоста. Пей достаточно воды, приезжай отдохнувшим.
+Питание. Питайся легко и здорово за несколько дней до опыта. Последний приём пищи, примерно за 6 часов до начала. Утром в день сессии допустим лёгкий завтрак из фруктов или тоста. Пей достаточно воды, приезжай отдохнувшим.
 
 Вещества. Избегай алкоголя, стимуляторов, опиатов и других психоактивных веществ за несколько недель до опыта.
 
-Лекарства. Если ты принимаешь любые лекарства — включая растительные препараты — обязательно сообщи об этом ведущему заранее и проконсультируйся с врачом. Некоторые сочетания опасны.
+Лекарства. Если ты принимаешь любые лекарства, включая растительные препараты, обязательно сообщи об этом ведущему заранее и проконсультируйся с врачом. Некоторые сочетания опасны.
 
-Состояние. Если состояние здоровья не позволяет тебе кататься на американских горках — скорее всего, тебе не стоит принимать психоделики. Это практическое правило, а не метафора.`,
+Состояние. Если состояние здоровья не позволяет тебе кататься на американских горках, скорее всего, тебе не стоит принимать психоделики. Это практическое правило, а не метафора.`,
       },
       {
         emoji: "👁️",
         title: "Зачем нужен проводник",
         tag: "Общее",
-        text: `Для большинства людей основное чувство во время путешествия — не открытие чего-то нового и чуждого, а ощущение возвращения домой: воспоминание и объединение с тем, что и так было спящим в сознании.
+        text: `Для большинства людей основное чувство во время путешествия, не открытие чего-то нового и чуждого, а ощущение возвращения домой: воспоминание и объединение с тем, что и так было спящим в сознании.
 
-Невозможно переоценить важность проводника. Во время расширения сознания бесценно находиться рядом с человеком которому доверяешь. Хорошим проводником делают не знания, а эмпатия и интуиция. Его задача — удерживать пространство, а не ставить цели.
+Невозможно переоценить важность проводника. Во время расширения сознания бесценно находиться рядом с человеком которому доверяешь. Хорошим проводником делают не знания, а эмпатия и интуиция. Его задача, удерживать пространство, а не ставить цели.
 
 Присутствие проводника влияет на направление, содержание и общее качество переживаний. Исследования Тимоти Лири и Рам Дасса показали: в большинстве случаев путешественник испытывает беспокойство именно тогда, когда проводник взволнован или не уверен.
 
-Если у тебя нет психотерапевтической подготовки — не берись за роль проводника когда человек хочет глубоко погрузиться в страдание или природу зла. В таких случаях предложи работу с психотерапевтом.`,
+Если у тебя нет психотерапевтической подготовки, не берись за роль проводника когда человек хочет глубоко погрузиться в страдание или природу зла. В таких случаях предложи работу с психотерапевтом.`,
       },
       {
         emoji: "🏠",
         title: "Как создать безопасное пространство",
         tag: "Общее",
-        text: `Всё что необходимо для безопасного путешествия — уютная комната с диваном или кроватью, удобное кресло для проводника и доступ в туалет.
+        text: `Всё что необходимо для безопасного путешествия, уютная комната с диваном или кроватью, удобное кресло для проводника и доступ в туалет.
 
 Важные элементы:
-— Мягкие подушки и одеяла под рукой
-— Музыкальная система — колонка лучше наушников: и ты, и проводник слышите музыку, при этом можно свободно перемещаться
-— Изоляция от посторонних звуков
-— Телефоны отключены или в беззвучном режиме
-— Цветы, свечи, благовония — по желанию
-— Маска для сна — усиливает внутреннее переживание
+– Мягкие подушки и одеяла под рукой
+– Музыкальная система, колонка лучше наушников: и ты, и проводник слышите музыку, при этом можно свободно перемещаться
+– Изоляция от посторонних звуков
+– Телефоны отключены или в беззвучном режиме
+– Цветы, свечи, благовония, по желанию
+– Маска для сна, усиливает внутреннее переживание
 
-Твоя цель — создать простую обстановку, поддерживающую внутреннюю тишину. Если сомневаешься что комната достаточно простая — упрости её ещё.
+Твоя цель, создать простую обстановку, поддерживающую внутреннюю тишину. Если сомневаешься что комната достаточно простая, упрости её ещё.
 
-Альберт Хофманн, создатель ЛСД: «Где бы вы его не принимали, всегда делайте это на природе». Идеальный баланс — интенсивные части сессии в помещении, возможность выйти на улицу позже.`,
+Альберт Хофманн, создатель ЛСД: «Где бы вы его не принимали, всегда делайте это на природе». Идеальный баланс, интенсивные части сессии в помещении, возможность выйти на улицу позже.`,
       },
       {
         emoji: "🌡️",
@@ -2940,11 +2974,11 @@ const LIBRARY_SECTIONS = [
         tag: "Аяуаска",
         text: `Аяуаска требует особой подготовки из-за серьёзных фармакологических взаимодействий.
 
-Строгие противопоказания по препаратам. Нельзя принимать с антидепрессантами (особенно СИОЗС и ИМАО), психотропными препаратами, амфетаминами, МДМА, кокаином. Это может вызвать гипертонический криз или серотониновый синдром — потенциально смертельные состояния. Период отмены зависит от конкретного препарата — уточни у врача.
+Строгие противопоказания по препаратам. Нельзя принимать с антидепрессантами (особенно СИОЗС и ИМАО), психотропными препаратами, амфетаминами, МДМА, кокаином. Это может вызвать гипертонический криз или серотониновый синдром, потенциально смертельные состояния. Период отмены зависит от конкретного препарата, уточни у врача.
 
 Диета. Традиционно рекомендуется диета за несколько дней до церемонии: исключить свинину, алкоголь, острое, ферментированные продукты с высоким содержанием тирамина.
 
-Психологическая подготовка. Не принимать при биполярном расстройстве, шизофрении, пограничном расстройстве личности без специального сопровождения. При истории тяжёлой депрессии или попытках суицида — только с психологическим сопровождением.
+Психологическая подготовка. Не принимать при биполярном расстройстве, шизофрении, пограничном расстройстве личности без специального сопровождения. При истории тяжёлой депрессии или попытках суицида, только с психологическим сопровождением.
 
 Качество церемонии критически важно. Число случаев злоупотреблений со стороны организаторов растёт. Узнай о формате церемоний, количестве участников и помощников, опыте и рекомендациях ведущего.`,
       },
@@ -2952,45 +2986,45 @@ const LIBRARY_SECTIONS = [
         emoji: "🍄",
         title: "Перед опытом с псилоцибиновыми грибами",
         tag: "Грибы",
-        text: `Псилоцибиновые грибы — один из наиболее изученных психоделиков с хорошим профилем безопасности. Но подготовка всё равно важна.
+        text: `Псилоцибиновые грибы, один из наиболее изученных психоделиков с хорошим профилем безопасности. Но подготовка всё равно важна.
 
-Идентификация. Если ты собираешь грибы самостоятельно — обязательна точная идентификация. Некоторые виды рода Galerina и Pholiota смертельно ядовиты и внешне похожи на псилоцибиновые виды. При малейшем сомнении — не употреблять.
+Идентификация. Если ты собираешь грибы самостоятельно, обязательна точная идентификация. Некоторые виды рода Galerina и Pholiota смертельно ядовиты и внешне похожи на псилоцибиновые виды. При малейшем сомнении, не употреблять.
 
-Доза. Начинай с низкой дозы особенно при первом опыте. Потенциал варьируется от вида, условий роста и возраста грибов. Первые эффекты через 30 минут — не повторяй дозу раньше.
+Доза. Начинай с низкой дозы особенно при первом опыте. Потенциал варьируется от вида, условий роста и возраста грибов. Первые эффекты через 30 минут, не повторяй дозу раньше.
 
 Психологическая подготовка. В период острого стресса или тяжёлых жизненных трудностей лучше повременить: грибы усиливают то, что уже есть внутри. Депрессия это не повод для запрета, псилоцибин официально изучается и применяется при депрессии, но работать с ней стоит не в одиночку, а под наблюдением специалиста. Людям с историей психоза или биполярного расстройства только в клиническом контексте.
 
-Тихая обстановка, доверенные люди рядом, заранее выбранная музыка — всё это существенно влияет на качество опыта.`,
+Тихая обстановка, доверенные люди рядом, заранее выбранная музыка, всё это существенно влияет на качество опыта.`,
       },
       {
         emoji: "🌵",
         title: "Перед опытом с пейотом и сан-педро",
         tag: "Мескалин",
-        text: `Оба кактуса содержат мескалин — опыт длится 10–14 часов. Это требует серьёзной подготовки времени и пространства.
+        text: `Оба кактуса содержат мескалин, опыт длится 10–14 часов. Это требует серьёзной подготовки времени и пространства.
 
-Дозировка непредсказуема. Концентрация мескалина в пейоте и сан-педро сильно варьируется в зависимости от экземпляра. Эффекты появляются через 2–3 часа — не повторяй дозу раньше времени. Ошибка в дозировке — одна из самых частых причин трудных опытов.
+Дозировка непредсказуема. Концентрация мескалина в пейоте и сан-педро сильно варьируется в зависимости от экземпляра. Эффекты появляются через 2–3 часа, не повторяй дозу раньше времени. Ошибка в дозировке, одна из самых частых причин трудных опытов.
 
-Тошнота и рвота — нормальная часть опыта. Традиционно воспринимается как очищение. Будь готов к этому физически и психологически.
+Тошнота и рвота, нормальная часть опыта. Традиционно воспринимается как очищение. Будь готов к этому физически и психологически.
 
-Не сочетать со стимуляторами — мескалин сам по себе имеет лёгкий стимулирующий эффект.
+Не сочетать со стимуляторами, мескалин сам по себе имеет лёгкий стимулирующий эффект.
 
-Пейот — охраняемый вид. Его сбор в дикой природе нанёс серьёзный ущерб популяции. Уважай это.
+Пейот, охраняемый вид. Его сбор в дикой природе нанёс серьёзный ущерб популяции. Уважай это.
 
-Те же психологические противопоказания что и для других классических психоделиков: психоз, биполярное расстройство, суицидальные мысли — только в клиническом контексте.`,
+Те же психологические противопоказания что и для других классических психоделиков: психоз, биполярное расстройство, суицидальные мысли, только в клиническом контексте.`,
       },
       {
         emoji: "🌳",
         title: "Перед опытом с ибогой",
         tag: "Ибога",
-        text: `Ибога требует наиболее строгой медицинской подготовки из всех психоделиков. Это не преувеличение — есть задокументированные смерти.
+        text: `Ибога требует наиболее строгой медицинской подготовки из всех психоделиков. Это не преувеличение, есть задокументированные смерти.
 
-Обязательные медицинские обследования. Электрокардиограмма — абсолютный минимум. Лучше — нагрузочный тест и суточный мониторинг с холтером. Ибогаин замедляет сердечный ритм и удлиняет интервал QT — это опасно при скрытых сердечных патологиях.
+Обязательные медицинские обследования. Электрокардиограмма, абсолютный минимум. Лучше, нагрузочный тест и суточный мониторинг с холтером. Ибогаин замедляет сердечный ритм и удлиняет интервал QT это опасно при скрытых сердечных патологиях.
 
 Абсолютные противопоказания: болезни сердца, аритмия, инфаркт в анамнезе, пороки сердца, тяжёлое ожирение, тромбозы, заболевания печени и почек.
 
-Опасные взаимодействия. Ибогаин метаболизируется ферментом CYP2D6 — многие препараты конкурируют за этот фермент. Нельзя принимать сразу после длительных перелётов — риск тромбоэмболии лёгких.
+Опасные взаимодействия. Ибогаин метаболизируется ферментом CYP2D6, многие препараты конкурируют за этот фермент. Нельзя принимать сразу после длительных перелётов, риск тромбоэмболии лёгких.
 
-Только в контролируемых условиях. Ибогаин — не для самостоятельного использования. Необходимо присутствие медицинского персонала с кардиологической подготовкой на протяжении всей сессии (7–12 часов острой фазы).
+Только в контролируемых условиях. Ибогаин, не для самостоятельного использования. Необходимо присутствие медицинского персонала с кардиологической подготовкой на протяжении всей сессии (7–12 часов острой фазы).
 
 Психологические противопоказания: шизофрения, история психозов, биполярное расстройство.`,
       },
@@ -2998,35 +3032,35 @@ const LIBRARY_SECTIONS = [
         emoji: "🐸",
         title: "Перед опытом с Буфо альвариус",
         tag: "5-MeO-DMT",
-        text: `Буфо альвариус — один из наиболее интенсивных опытов из известных. Требует особой подготовки именно потому что он очень короткий — и именно поэтому к нему легко относятся легкомысленно.
+        text: `Буфо альвариус, один из наиболее интенсивных опытов из известных. Требует особой подготовки именно потому что он очень короткий, и именно поэтому к нему легко относятся легкомысленно.
 
-Опасные сочетания. Нельзя сочетать с аяуаской — ждать минимум 24 часа между веществами. Нельзя сочетать с ИМАО — документированные смерти от гипертермии. Нельзя при приёме антидепрессантов.
+Опасные сочетания. Нельзя сочетать с аяуаской, ждать минимум 24 часа между веществами. Нельзя сочетать с ИМАО, документированные смерти от гипертермии. Нельзя при приёме антидепрессантов.
 
-Обязательное сопровождение. Во время опыта человек полностью теряет контроль над телом — непроизвольные движения, возможны падения. Присутствие трезвого и подготовленного человека обязательно.
+Обязательное сопровождение. Во время опыта человек полностью теряет контроль над телом, непроизвольные движения, возможны падения. Присутствие трезвого и подготовленного человека обязательно.
 
-Психологическая готовность. Опыт включает полное растворение эго и ощущение смерти. Это не метафора — многие описывают это именно так. Важно осознанно согласиться с этой возможностью до начала, а не в процессе.
+Психологическая готовность. Опыт включает полное растворение эго и ощущение смерти. Это не метафора, многие описывают это именно так. Важно осознанно согласиться с этой возможностью до начала, а не в процессе.
 
-Экологический вопрос. Массовый спрос на церемонии с жабой нанёс серьёзный ущерб популяции Incilius alvarius. Синтетический 5-MeO-DMT — этичная альтернатива без вреда для животного.`,
+Экологический вопрос. Массовый спрос на церемонии с жабой нанёс серьёзный ущерб популяции Incilius alvarius. Синтетический 5-MeO-DMT, этичная альтернатива без вреда для животного.`,
       },
       {
         emoji: "💊",
         title: "Перед опытом с МДМА",
         tag: "МДМА",
-        text: `МДМА в терапевтическом контексте — это не таблетка на вечеринке. Речь о структурированной работе с травмой в сопровождении подготовленного специалиста.
+        text: `МДМА в терапевтическом контексте это не таблетка на вечеринке. Речь о структурированной работе с травмой в сопровождении подготовленного специалиста.
 
-Медицинские противопоказания: болезни сердца, неконтролируемая гипертония, эпилепсия, болезни печени, глаукома. Нельзя при приёме ИМАО, лития, многих антидепрессантов — опасные взаимодействия.
+Медицинские противопоказания: болезни сердца, неконтролируемая гипертония, эпилепсия, болезни печени, глаукома. Нельзя при приёме ИМАО, лития, многих антидепрессантов, опасные взаимодействия.
 
-Психологические особенности. МДМА временно снижает активность миндалины — это позволяет работать с травматическим материалом без захлёстывающего страха. Но это же означает что защитные механизмы психики временно ослаблены. Важно иметь план того что делать с тем что поднимется.
+Психологические особенности. МДМА временно снижает активность миндалины это позволяет работать с травматическим материалом без захлёстывающего страха. Но это же означает что защитные механизмы психики временно ослаблены. Важно иметь план того что делать с тем что поднимется.
 
-Температурный риск. Гипертермия — основной физический риск. Особенно при физической активности. Поддерживай умеренную температуру, пей воду — но не избыточно (гипонатриемия тоже опасна, 200–400 мл в час при активности).
+Температурный риск. Гипертермия, основной физический риск. Особенно при физической активности. Поддерживай умеренную температуру, пей воду, но не избыточно (гипонатриемия тоже опасна, 200–400 мл в час при активности).
 
-Частота. Рекомендуемый интервал между приёмами — минимум 3 месяца. При более частом использовании — риск нейротоксичности.`,
+Частота. Рекомендуемый интервал между приёмами, минимум 3 месяца. При более частом использовании, риск нейротоксичности.`,
       },
     ],
   },
 
   // ─────────────────────────────────────────────
-  // РАЗДЕЛ 2 — ВО ВРЕМЯ ОПЫТА
+  // РАЗДЕЛ 2, ВО ВРЕМЯ ОПЫТА
   // ─────────────────────────────────────────────
   {
     id: "during",
@@ -3038,15 +3072,15 @@ const LIBRARY_SECTIONS = [
         tag: "Ориентация",
         text: `Любой психоделический опыт проходит через несколько фаз. Знание этого помогает не паниковать когда что-то меняется.
 
-Начало (20–60 минут). Вещество начинает действовать. Некоторым хочется двигаться и разговаривать — это нормально. Постепенно направляй внимание внутрь. Ляг, начни слушать музыку, наблюдай за дыханием. Может появляться ощущение «входа и выхода» — это начало путешествия.
+Начало (20–60 минут). Вещество начинает действовать. Некоторым хочется двигаться и разговаривать это нормально. Постепенно направляй внимание внутрь. Ляг, начни слушать музыку, наблюдай за дыханием. Может появляться ощущение «входа и выхода» это начало путешествия.
 
-Открытие (2–4 часа). Самая интенсивная часть. Изменения восприятия, образы, эмоции. Именно здесь многие соприкасаются с ощущением единства или встречают трудный материал. Доверяй процессу — сопротивление обычно усиливает дискомфорт.
+Открытие (2–4 часа). Самая интенсивная часть. Изменения восприятия, образы, эмоции. Именно здесь многие соприкасаются с ощущением единства или встречают трудный материал. Доверяй процессу, сопротивление обычно усиливает дискомфорт.
 
 Плато (1–2 часа). После пика интенсивность снижается. Можно сесть, поговорить с проводником, продолжить слушать музыку.
 
-Завершение (2–4 часа). Постепенное возвращение. Время для личностной работы — ты уже в контакте со своей идентичностью, но свободнее от привычных паттернов. Не торопись возвращаться во внешний мир.
+Завершение (2–4 часа). Постепенное возвращение. Время для личностной работы, ты уже в контакте со своей идентичностью, но свободнее от привычных паттернов. Не торопись возвращаться во внешний мир.
 
-Длительность зависит от вещества: псилоцибин — 4–6 часов, аяуаска — 4–6 часов, ЛСД — 8–12 часов, пейот/сан-педро — 10–14 часов.`,
+Длительность зависит от вещества: псилоцибин, 4–6 часов, аяуаска, 4–6 часов, ЛСД, 8–12 часов, пейот/сан-педро, 10–14 часов.`,
       },
       {
         emoji: "👥",
@@ -3068,91 +3102,91 @@ const LIBRARY_SECTIONS = [
         emoji: "😰",
         title: "Как работать со страхом",
         tag: "Трудный опыт",
-        text: `Страх во время психоделического опыта — нормальная реакция. Это часто естественный ответ на встречу с запутанным клубком воспоминаний, желаний и неразрешённых проблем. Страх не значит что что-то идёт не так.
+        text: `Страх во время психоделического опыта, нормальная реакция. Это часто естественный ответ на встречу с запутанным клубком воспоминаний, желаний и неразрешённых проблем. Страх не значит что что-то идёт не так.
 
 Что помогает:
-— Дыши медленно и глубоко от диафрагмы. Поверхностное дыхание — признак сопротивления. Глубокое — признак отпускания
-— Концентрируйся на музыке
-— Отдайся эффектам — сопротивление обычно усиливает дискомфорт
-— Попроси проводника просто подержать тебя за руку
-— Напомни себе: ты сам выбрал пережить этот опыт
+– Дыши медленно и глубоко от диафрагмы. Поверхностное дыхание, признак сопротивления. Глубокое, признак отпускания
+– Концентрируйся на музыке
+– Отдайся эффектам, сопротивление обычно усиливает дискомфорт
+– Попроси проводника просто подержать тебя за руку
+– Напомни себе: ты сам выбрал пережить этот опыт
 
 Майкл Поллан: «Доверяйте, отпускайте и будьте открытыми. Всегда двигайтесь к чему-то, а не пытайтесь убежать. Спросите: кто ты, и что ты делаешь в моём сознании?»
 
-Переживание умирания — одно из самых частых и пугающих. Но это внутреннее переживание. С твоим телом всё в порядке. Это может быть первой реакцией личности на осознание того что ты больше чем твоя личность.
+Переживание умирания, одно из самых частых и пугающих. Но это внутреннее переживание. С твоим телом всё в порядке. Это может быть первой реакцией личности на осознание того что ты больше чем твоя личность.
 
-Советовать дышать лучше в форме напоминания — «Дыхание» — а не указания — «Дыши». В изменённом состоянии сознания директивы воспринимаются тяжелее.`,
+Советовать дышать лучше в форме напоминания, «Дыхание», а не указания, «Дыши». В изменённом состоянии сознания директивы воспринимаются тяжелее.`,
       },
       {
         emoji: "🌌",
         title: "Смерть эго",
         tag: "Феномен опыта",
-        text: `Смерть эго — полная временная потеря ощущения себя как отдельной личности. Человек бодрствует и функционирует, но не может вспомнить своё имя, пол, историю — кто он такой. Граница между «я» и окружающим миром растворяется.
+        text: `Смерть эго, полная временная потеря ощущения себя как отдельной личности. Человек бодрствует и функционирует, но не может вспомнить своё имя, пол, историю, кто он такой. Граница между «я» и окружающим миром растворяется.
 
-Уильям Джеймс в XIX веке называл это «самоотдачей», юнгианская психология — «психической смертью». В суфизме это фана — растворение себя в божественном единстве. В дзен-буддизме — анатта, осознание иллюзорности эго как источника страдания.
+Уильям Джеймс в XIX веке называл это «самоотдачей», юнгианская психология, «психической смертью». В суфизме это фана, растворение себя в божественном единстве. В дзен-буддизме, анатта, осознание иллюзорности эго как источника страдания.
 
-Психоделики — наиболее изученный путь к этому состоянию. Мозговая сеть пассивного режима работы (DMN) отвечает за формирование эго и самоидентичности. Психоделики временно подавляют её активность — отсюда ощущение растворения границ «я».
+Психоделики, наиболее изученный путь к этому состоянию. Мозговая сеть пассивного режима работы (DMN) отвечает за формирование эго и самоидентичности. Психоделики временно подавляют её активность, отсюда ощущение растворения границ «я».
 
 Клинические исследования псилоцибина показали: глубина мистического опыта и растворения эго во время сессии предсказывает эффективность лечения депрессии. В исследовании терапевтически резистентной депрессии (Roseman et al., 2018) со снижением симптомов через пять недель коррелировала именно интенсивность этих переживаний, а не сила сенсорных эффектов.
 
-Опыт может быть двояким. Одни описывают его как лёгкость — будто груз биографического «я» снят с тела. Для других — дезориентирующий и пугающий: ты в комнате и не знаешь как сюда попал и сколько это продлится.
+Опыт может быть двояким. Одни описывают его как лёгкость, будто груз биографического «я» снят с тела. Для других, дезориентирующий и пугающий: ты в комнате и не знаешь как сюда попал и сколько это продлится.
 
-Смерть эго — не цель и не достижение. Это возможное измерение опыта. Насколько глубоко ты войдёшь и что с этим сделаешь — вопрос подготовки, контекста и интеграции.`,
+Смерть эго, не цель и не достижение. Это возможное измерение опыта. Насколько глубоко ты войдёшь и что с этим сделаешь, вопрос подготовки, контекста и интеграции.`,
       },
       {
         emoji: "🎵",
         title: "Музыка как инструмент",
         tag: "Практика",
-        text: `В большинстве культур использующих растения для исцеления музыка помогает переходить с одного уровня осознания на другой. Во время сессии она превращается в многослойное звуковое полотно — большинству людей кажется что она исходит из собственного тела.
+        text: `В большинстве культур использующих растения для исцеления музыка помогает переходить с одного уровня осознания на другой. Во время сессии она превращается в многослойное звуковое полотно, большинству людей кажется что она исходит из собственного тела.
 
 Рекомендации по выбору:
-— Первый час: инструментальная, без слов, спокойная
-— Классика которая работает: Реквием Брамса, Адажио Барбера, Третья симфония Горецкого
-— Специально созданные плейлисты: East Forest — Music for Mushrooms (Spotify), плейлист Уильяма Ричардса из Johns Hopkins
-— После первого часа: избегай музыки с узнаваемыми словами — они отвлекают и уводят в конкретные образы
-— Вторая половина: можно любую, включая любимую музыку путешественника
+– Первый час: инструментальная, без слов, спокойная
+– Классика которая работает: Реквием Брамса, Адажио Барбера, Третья симфония Горецкого
+– Специально созданные плейлисты: East Forest, Music for Mushrooms (Spotify), плейлист Уильяма Ричардса из Johns Hopkins
+– После первого часа: избегай музыки с узнаваемыми словами, они отвлекают и уводят в конкретные образы
+– Вторая половина: можно любую, включая любимую музыку путешественника
 
-Слушай с закрытыми глазами — это усиливает воздействие. Маска для сна помогает.
+Слушай с закрытыми глазами это усиливает воздействие. Маска для сна помогает.
 
-Даже в глубоких состояниях когда человек может не слышать звуки — музыка всё равно поддерживает и страхует, как сетка для воздушной гимнастики.`,
+Даже в глубоких состояниях когда человек может не слышать звуки, музыка всё равно поддерживает и страхует, как сетка для воздушной гимнастики.`,
       },
       {
         emoji: "🪞",
         title: "Осторожно с интерпретацией в моменте",
         tag: "Важно",
-        text: `Один из менее очевидных рисков — опасная интерпретация того что пришло в опыте.
+        text: `Один из менее очевидных рисков, опасная интерпретация того что пришло в опыте.
 
-Люди могут чувствовать что вещество «сказало им» уйти с работы, расстаться с партнёром, что они подверглись насилию, или что они должны стать шаманами. Иногда эти послания — не буквальная истина, а выражение бессознательного. Прежде чем действовать — исследуй их с опытным человеком.
+Люди могут чувствовать что вещество «сказало им» уйти с работы, расстаться с партнёром, что они подверглись насилию, или что они должны стать шаманами. Иногда эти послания, не буквальная истина, а выражение бессознательного. Прежде чем действовать, исследуй их с опытным человеком.
 
-Поощряй путешественника просто быть с опытом, оставляя обсуждение на период после сессии. Не стоит в моменте пытаться понять происходящее — это задача интеграции.
+Поощряй путешественника просто быть с опытом, оставляя обсуждение на период после сессии. Не стоит в моменте пытаться понять происходящее это задача интеграции.
 
-Хорошая реакция проводника на любое переживание путешественника: мягкое приглашение пойти дальше — «Всё хорошо. Хочешь узнать больше?». Когда путешественник чувствует себя в безопасности — ему легче достичь расширенного состояния и запомнить опыт.
+Хорошая реакция проводника на любое переживание путешественника: мягкое приглашение пойти дальше, «Всё хорошо. Хочешь узнать больше?». Когда путешественник чувствует себя в безопасности, ему легче достичь расширенного состояния и запомнить опыт.
 
-Если путешественник попал в «луп» — повторяет один и тот же вопрос или фразу — помогает совет «вернуться к музыке». Но не настаивай — в изменённом состоянии настойчивость может восприниматься как отвержение.`,
+Если путешественник попал в «луп», повторяет один и тот же вопрос или фразу, помогает совет «вернуться к музыке». Но не настаивай, в изменённом состоянии настойчивость может восприниматься как отвержение.`,
       },
       {
         emoji: "🛡️",
         title: "Роль проводника во время сессии",
         tag: "Для проводников",
-        text: `Сопровождение в психоделическом путешествии — священная работа. Твоя задача — удерживать пространство, а не направлять содержание опыта.
+        text: `Сопровождение в психоделическом путешествии, священная работа. Твоя задача, удерживать пространство, а не направлять содержание опыта.
 
 Главные принципы:
-— Не принимай вещества изменяющие сознание до или во время сессии
-— Не предпринимай действий сексуального характера даже если тебя об этом попросят — человек под воздействием психоделика не способен на осознанное согласие
-— Не высказывай своё мнение о личных отношениях или решениях путешественника
-— Не навязывай духовные интерпретации — у каждого свой способ встретиться с тем что важно
+– Не принимай вещества изменяющие сознание до или во время сессии
+– Не предпринимай действий сексуального характера даже если тебя об этом попросят, человек под воздействием психоделика не способен на осознанное согласие
+– Не высказывай своё мнение о личных отношениях или решениях путешественника
+– Не навязывай духовные интерпретации, у каждого свой способ встретиться с тем что важно
 
-Будь уравновешенным. Чем более ты сфокусирован — тем более эффективным проводником будешь. Исследования показали: в большинстве случаев путешественник испытывает беспокойство именно тогда, когда проводник взволнован.
+Будь уравновешенным. Чем более ты сфокусирован, тем более эффективным проводником будешь. Исследования показали: в большинстве случаев путешественник испытывает беспокойство именно тогда, когда проводник взволнован.
 
-Если нужно выйти в туалет — скажи об этом. Не терпи долго — путешественник почувствует твоё напряжение. Когда вернёшься, скажи что тебя не было всего несколько минут — для него могло пройти много внутреннего времени.
+Если нужно выйти в туалет, скажи об этом. Не терпи долго, путешественник почувствует твоё напряжение. Когда вернёшься, скажи что тебя не было всего несколько минут, для него могло пройти много внутреннего времени.
 
-Контактный кайф. Проводник может испытывать яркие воспоминания о собственном опыте или ощущения близкие к расширенным состояниям. Это нормально — и не должно мешать твоей роли.`,
+Контактный кайф. Проводник может испытывать яркие воспоминания о собственном опыте или ощущения близкие к расширенным состояниям. Это нормально, и не должно мешать твоей роли.`,
       },
     ],
   },
 
   // ─────────────────────────────────────────────
-  // РАЗДЕЛ 3 — ПОСЛЕ ОПЫТА
+  // РАЗДЕЛ 3, ПОСЛЕ ОПЫТА
   // ─────────────────────────────────────────────
   {
     id: "after",
@@ -3178,19 +3212,19 @@ const LIBRARY_SECTIONS = [
       },
       {
         emoji: "⚡",
-        title: "Нейропластическое окно — первые 72 часа",
+        title: "Нейропластическое окно, первые 72 часа",
         tag: "Нейронаука",
-        text: `Психоделики временно возвращают мозгу повышенную пластичность — способность формировать новые связи и перестраивать старые. Это не метафора — это задокументированный нейробиологический процесс.
+        text: `Психоделики временно возвращают мозгу повышенную пластичность, способность формировать новые связи и перестраивать старые. Это не метафора это задокументированный нейробиологический процесс.
 
-Ключевой белок — BDNF, нейротрофический фактор мозга. Его называют «удобрением для нейронов» — он стимулирует рост новых клеток и укрепляет связи. Психоделики повышают его уровень. Депрессия снижает.
+Ключевой белок, BDNF, нейротрофический фактор мозга. Его называют «удобрением для нейронов», он стимулирует рост новых клеток и укрепляет связи. Психоделики повышают его уровень. Депрессия снижает.
 
 Временная шкала:
-— Первые 72 часа: период наибольшей пластичности. Важны отдых и записи — не решения
-— Первая неделя: самое продуктивное время для работы с тем что поднялось
-— Первый месяц: инсайты оседают, рефлексия особенно важна
-— До года: для стабилизации глубоких личностных изменений требуется время
+– Первые 72 часа: период наибольшей пластичности. Важны отдых и записи, не решения
+– Первая неделя: самое продуктивное время для работы с тем что поднялось
+– Первый месяц: инсайты оседают, рефлексия особенно важна
+– До года: для стабилизации глубоких личностных изменений требуется время
 
-Вот почему интеграция в первые дни так важна. Мозг буквально открыт к изменениям — используй это осознанно. Не заполняй это время лишними стимулами, встречами, алкоголем. Дай опыту осесть.
+Вот почему интеграция в первые дни так важна. Мозг буквально открыт к изменениям, используй это осознанно. Не заполняй это время лишними стимулами, встречами, алкоголем. Дай опыту осесть.
 
 Информационная и социальная гигиена. В это открытое окно мозг сильнее обычного чувствителен не только к твоим инсайтам, но и к среде вокруг. Чужие мнения, оценки, споры и то, что ты читаешь и смотришь, в эти дни заходят глубже и сильнее формируют тебя. Поэтому береги своё пространство: выбирай, с кем делиться, отложи разборки и чужие оценки, сбавь поток новостей и ленты. Дай опыту осесть в тишине, прежде чем впускать в него чужие голоса.`,
       },
@@ -3198,20 +3232,20 @@ const LIBRARY_SECTIONS = [
         emoji: "◎",
         title: "Что такое интеграция",
         tag: "Основа",
-        text: `Слово «интеграция» происходит от латинского integer — целый, полный. Интеграция психоделического опыта — это процесс возвращения к целостности. Не анализ. Не интерпретация. Встраивание того что произошло в живую ткань жизни.
+        text: `Слово «интеграция» происходит от латинского integer, целый, полный. Интеграция психоделического опыта это процесс возвращения к целостности. Не анализ. Не интерпретация. Встраивание того что произошло в живую ткань жизни.
 
 После сессии человек часто возвращается с новыми перспективами и желанием перемен. Без интеграции эти откровения и озарения исчезают очень быстро.
 
 Что помогает:
-— Записать то что возникло во время опыта — это позволяет удержать и заякорить содержание
-— Поговорить о пережитом с опытным человеком
-— Не торопиться с выводами и жизненными решениями
+– Записать то что возникло во время опыта это позволяет удержать и заякорить содержание
+– Поговорить о пережитом с опытным человеком
+– Не торопиться с выводами и жизненными решениями
 
 Откровения психоделического опыта часто нельзя понимать буквально, им нужна расшифровка. Но смысл ты находишь сам. Хороший специалист помогает не тем, что выдаёт готовое толкование, а тем, что поддерживает процесс и твою психику.
 
 Если опыт поднял тяжёлое, тревогу или старую травму, или ты застрял, имеет смысл обратиться к психологу. Его задача психологическая работа и поддержка, а не толкование твоих инсайтов: их значение остаётся твоим.
 
-Один трип может изменить всё. Интеграция — это то что делает изменение реальным и устойчивым.`,
+Один трип может изменить всё. Интеграция это то что делает изменение реальным и устойчивым.`,
       },
       {
         emoji: "⏳",
@@ -3219,29 +3253,29 @@ const LIBRARY_SECTIONS = [
         tag: "Важно",
         text: `В первые несколько недель после путешествия не принимай меняющих жизнь решений.
 
-Некоторые люди преждевременно переоценивают отношения с романтическим партнёром. Другие решают бросить работу, переехать, стать шаманом. Иногда эти решения правильные — но принятые в период нейропластической открытости они могут быть продиктованы волной а не глубиной.
+Некоторые люди преждевременно переоценивают отношения с романтическим партнёром. Другие решают бросить работу, переехать, стать шаманом. Иногда эти решения правильные, но принятые в период нейропластической открытости они могут быть продиктованы волной а не глубиной.
 
-Исключение — немедленный отказ от вредящего тебе поведения: чрезмерного употребления алкоголя, наркотиков. Здесь откладывать не нужно.
+Исключение, немедленный отказ от вредящего тебе поведения: чрезмерного употребления алкоголя, наркотиков. Здесь откладывать не нужно.
 
-Дай себе время. Настоящие инсайты никуда не денутся. Если через месяц ты всё ещё чувствуешь что нужно что-то изменить — это уже не импульс. Это понимание.
+Дай себе время. Настоящие инсайты никуда не денутся. Если через месяц ты всё ещё чувствуешь что нужно что-то изменить это уже не импульс. Это понимание.
 
-После опыта ты можешь лучше чем когда-либо осознать — кто в твоей жизни даёт тебе энергию, а кто забирает. Как с едой — будь с теми кто тебя питает.`,
+После опыта ты можешь лучше чем когда-либо осознать, кто в твоей жизни даёт тебе энергию, а кто забирает. Как с едой, будь с теми кто тебя питает.`,
       },
       {
         emoji: "🕳️",
         title: "Духовный байпас",
         tag: "Ловушка",
-        text: `Духовный байпас — это когда психоделический опыт используется как способ избежать реальной психологической работы.
+        text: `Духовный байпас это когда психоделический опыт используется как способ избежать реальной психологической работы.
 
-Вместо того чтобы встретиться с болью, тревогой, непроработанной травмой — человек прячется за инсайтом. «Я всё понял на церемонии», «я уже через это прошёл» — и реальная работа не делается. Это выглядит как интеграция. Но ею не является.
+Вместо того чтобы встретиться с болью, тревогой, непроработанной травмой, человек прячется за инсайтом. «Я всё понял на церемонии», «я уже через это прошёл», и реальная работа не делается. Это выглядит как интеграция. Но ею не является.
 
 Признаки духовного байпаса:
-— Ощущение что ты «выше» проблем обычной жизни
-— Избегание терапии с помощью духовных объяснений
-— Постоянный поиск новых опытов вместо проработки старых
-— Раздражение когда кто-то указывает на реальные проблемы которые не исчезли
+– Ощущение что ты «выше» проблем обычной жизни
+– Избегание терапии с помощью духовных объяснений
+– Постоянный поиск новых опытов вместо проработки старых
+– Раздражение когда кто-то указывает на реальные проблемы которые не исчезли
 
-Инсайт — это не работа. Инсайт — это приглашение к работе. Разница важна.`,
+Инсайт это не работа. Инсайт это приглашение к работе. Разница важна.`,
       },
       {
         emoji: "🔄",
@@ -3251,26 +3285,26 @@ const LIBRARY_SECTIONS = [
 
 Это про глубокую самостоятельную работу. В клинике интервалы короче, но там это лечение под структурированным сопровождением, а не самостоятельная практика: например, в исследованиях псилоцибина при депрессии две дозы давали с интервалом в три недели, в работе по резистентной депрессии с разницей в семь дней, а в протоколе по ПТСР сессии шли примерно через каждые две недели. Отдельно есть чистая фармакология: к классическим психоделикам быстро растёт толерантность, она перекрёстная между ЛСД, грибами и мескалином, и чувствительность восстанавливается примерно за одну-две недели, поэтому повторять «через день» бессмысленно, эффект будет слабее.
 
-Гнаться за повторением вспышки почти никогда не срабатывает. Это как снимать новую фотографию поверх другой на том же кадре плёнки — изображение будет замутнено.
+Гнаться за повторением вспышки почти никогда не срабатывает. Это как снимать новую фотографию поверх другой на том же кадре плёнки, изображение будет замутнено.
 
-Если ты чувствуешь что «должен» как можно скорее снова принять психоделик — скорее всего тебе нужно посмотреть в лицо проблеме которую избегаешь. Это чувство не является приказом от твоего высшего «Я» принять психоделик.
+Если ты чувствуешь что «должен» как можно скорее снова принять психоделик, скорее всего тебе нужно посмотреть в лицо проблеме которую избегаешь. Это чувство не является приказом от твоего высшего «Я» принять психоделик.
 
-Помни: твой опыт — не просто эффект вещества. Ему способствовало сочетание препарата, намерения, обстановки и поддержки. Пренебрежение любой из этих переменных снизит ценность любого последующего опыта.`,
+Помни: твой опыт, не просто эффект вещества. Ему способствовало сочетание препарата, намерения, обстановки и поддержки. Пренебрежение любой из этих переменных снизит ценность любого последующего опыта.`,
       },
       {
         emoji: "🤝",
         title: "Когда нужна помощь специалиста",
         tag: "Поддержка",
-        text: `Если процесс с психоделиком заставляет задуматься о серьёзных изменениях в жизни или начать работу над серьёзными личными проблемами — лучше всего делать это при поддержке специалиста.
+        text: `Если процесс с психоделиком заставляет задуматься о серьёзных изменениях в жизни или начать работу над серьёзными личными проблемами, лучше всего делать это при поддержке специалиста.
 
 Обратись за помощью если:
-— Трудный опыт не отпускает спустя несколько недель
-— Появились симптомы острого стресса или диссоциации которые не проходят
-— Опыт поднял травматический материал с которым сложно справиться самостоятельно
-— Ты чувствуешь желание повторять опыт слишком часто
-— Ты принимаешь важные жизненные решения в состоянии эйфории после опыта
+– Трудный опыт не отпускает спустя несколько недель
+– Появились симптомы острого стресса или диссоциации которые не проходят
+– Опыт поднял травматический материал с которым сложно справиться самостоятельно
+– Ты чувствуешь желание повторять опыт слишком часто
+– Ты принимаешь важные жизненные решения в состоянии эйфории после опыта
 
-Редко но реально: после трудного опыта с грибами или аяуаской могут появиться симптомы которые требуют специализированной психологической помощи. Это не значит что что-то сломалось — это значит что нужна поддержка.
+Редко но реально: после трудного опыта с грибами или аяуаской могут появиться симптомы которые требуют специализированной психологической помощи. Это не значит что что-то сломалось это значит что нужна поддержка.
 
 Психотерапевтические интеграционные сессии помогают обработать психологический материал опыта надлежащим образом.`,
       },
@@ -3278,12 +3312,55 @@ const LIBRARY_SECTIONS = [
   },
 
   // ─────────────────────────────────────────────
-  // РАЗДЕЛ 4 — КОНТЕКСТ И ЭТИКА
+  // РАЗДЕЛ 4, КОНТЕКСТ И ЭТИКА
   // ─────────────────────────────────────────────
   {
     id: "context",
     label: "Контекст и этика",
     articles: [
+      {
+        emoji: "🌍",
+        title: "Коренные народы и их мудрость",
+        tag: "Корни",
+        text: `Всё о чём мы говорим, психоделические церемонии, работа с намерением, интеграция через сообщество это не современные изобретения. Это тысячелетние традиции коренных народов.
+
+Аяуаска используется как духовная медицина коренными сообществами Амазонии на протяжении веков. Пейот, более 3500 лет народами Мексики и юго-запада США. Псилоцибиновые грибы, тысячи лет мазатеками и другими мезоамериканскими культурами.
+
+Очевидно что коренным общинам с давней историей использования этих растений не нужны подобные руководства. Аяуаска, пейот, грибы, часть их культурно-духовной системы, включающей безопасные способы работы с ними и методы интеграции опыта в повседневную жизнь общины.
+
+Психоделический ренессанс на Западе многим обязан этим традициям. И у нас есть ответственность, помнить об этом. Не романтизировать, не присваивать, а уважать. Признавать источники. Поддерживать права коренных народов на их собственные традиции и знания.`,
+      },
+      {
+        emoji: "⚖️",
+        title: "Биопиратство",
+        tag: "Этика",
+        text: `Биопиратство это присвоение знаний, практик и биологических ресурсов коренных народов без их согласия и без справедливого вознаграждения.
+
+В психоделическом пространстве это выражается по-разному. Западные компании патентуют производные аяуаски. Церемониальные практики копируются и продаются без понимания их контекста. Популяция пейотного кактуса истощается из-за психоделического туризма. Популяция жабы Bufo alvarius под угрозой из-за массовых церемоний.
+
+Рост популярности камбо на Западе поднял острый вопрос о правах племён Катукина, Яваnаhua и других на свои знания. Бразильское правительство запретило коммерциализацию камбо в 2004 году именно после жалоб традиционных сообществ.
+
+Что можно делать:
+– Узнавать о происхождении практики которую ты используешь
+– Поддерживать организации защищающие права коренных народов
+– Выбирать ретриты и организаторов которые работают с коренными сообществами а не вопреки им`,
+      },
+      {
+        emoji: "💊",
+        title: "Психоделический ренессанс, кому он служит",
+        tag: "Критический взгляд",
+        text: `Мы живём в период беспрецедентного интереса к психоделикам со стороны науки, медицины и бизнеса. Это хорошая новость, и одновременно повод для внимательности.
+
+Хорошее. Клинические исследования псилоцибина, МДМА и кетамина показывают реальные результаты в лечении депрессии, ПТСР, зависимостей. Это меняет психиатрию.
+
+Тревожное. Корпоратизация психоделической медицины создаёт риск что терапия станет доступной только для состоятельных людей. Венчурный капитал входит в пространство которое десятилетиями развивалось сообществами, активистами и коренными народами.
+
+Биопиратство масштабируется, компании патентуют производные растений которые использовались тысячелетиями без какой-либо компенсации коренным сообществам.
+
+Доступность. Если психоделическая терапия станет легальной но останется доступной только за тысячи долларов за сессию, ренессанс обслужит рынок, а не людей.
+
+Психоделический ренессанс должен служить людям, а не фармрынку. Это не данность это то за что нужно работать.`,
+      },
       {
         emoji: "📚",
         title: "Что почитать и посмотреть",
@@ -3296,13 +3373,13 @@ const LIBRARY_SECTIONS = [
 
 Рам Дасс (Ричард Альперт), «Будь здесь и сейчас» (1971). Тот же Альперт, но после: гарвардский психолог уходит от психоделиков к духовному поиску и пишет культовую книгу. Хорошо показывает, куда людей вело дальше, к вопросу, что делать с опытом после самих веществ.
 
-Альберт Хофманн, «ЛСД — мой трудный ребёнок» (1979). От первооткрывателя ЛСД: как вещество родилось в лаборатории, стало надеждой психиатрии и потом «трудным ребёнком». Трезвый взгляд изнутри, без романтизации.
+Альберт Хофманн, «ЛСД, мой трудный ребёнок» (1979). От первооткрывателя ЛСД: как вещество родилось в лаборатории, стало надеждой психиатрии и потом «трудным ребёнком». Трезвый взгляд изнутри, без романтизации.
 
 Станислав Гроф, «За пределами мозга» (1985). Отец трансперсональной психологии обобщает огромный опыт ЛСД-психотерапии и предлагает свою карту глубин психики. Плотная, но важная книга для тех, кто хочет понять психонавтскую сторону опыта изнутри.
 
 Теренс Маккенна, «Пища богов» (1992). Самый яркий рассказчик психоделической культуры со своей теорией о роли грибов в эволюции человека. Читать стоит как мощную и спорную идею и образец этого типа мышления, помня, что часть его гипотез наука не подтверждает.
 
-Рик Страссман, «ДМТ — молекула духа» (2001). Первое за десятилетия официальное клиническое исследование DMT на людях. Видно, как устроена строгая научная работа с психоделиком и чем она отличается от самостоятельных трипов.
+Рик Страссман, «ДМТ, молекула духа» (2001). Первое за десятилетия официальное клиническое исследование DMT на людях. Видно, как устроена строгая научная работа с психоделиком и чем она отличается от самостоятельных трипов.
 
 Майкл Поллан, «Как изменить своё сознание» (2018, рус. «Мир иной»). Лучшая отправная точка: журналист спокойно и по фактам проходит историю, науку и собственный опыт, от расцвета психоделиков до запрета и нынешнего возвращения. Лечит сразу и от страшилок, и от восторженного хайпа.
 
@@ -3324,54 +3401,11 @@ const LIBRARY_SECTIONS = [
 
 За свежими исследованиями, а заодно за наркополитикой и вообще темой веществ, удобно следить в нашем Telegram-канале «независимый портал»: t.me/nezavisimiy_portal. Там новое выходит по мере появления, а здесь, в Базе знаний, собрано то, что меняется редко.`,
       },
-      {
-        emoji: "🌍",
-        title: "Коренные народы и их мудрость",
-        tag: "Корни",
-        text: `Всё о чём мы говорим — психоделические церемонии, работа с намерением, интеграция через сообщество — это не современные изобретения. Это тысячелетние традиции коренных народов.
-
-Аяуаска используется как духовная медицина коренными сообществами Амазонии на протяжении веков. Пейот — более 3500 лет народами Мексики и юго-запада США. Псилоцибиновые грибы — тысячи лет мазатеками и другими мезоамериканскими культурами.
-
-Очевидно что коренным общинам с давней историей использования этих растений не нужны подобные руководства. Аяуаска, пейот, грибы — часть их культурно-духовной системы, включающей безопасные способы работы с ними и методы интеграции опыта в повседневную жизнь общины.
-
-Психоделический ренессанс на Западе многим обязан этим традициям. И у нас есть ответственность — помнить об этом. Не романтизировать, не присваивать — а уважать. Признавать источники. Поддерживать права коренных народов на их собственные традиции и знания.`,
-      },
-      {
-        emoji: "⚖️",
-        title: "Биопиратство",
-        tag: "Этика",
-        text: `Биопиратство — это присвоение знаний, практик и биологических ресурсов коренных народов без их согласия и без справедливого вознаграждения.
-
-В психоделическом пространстве это выражается по-разному. Западные компании патентуют производные аяуаски. Церемониальные практики копируются и продаются без понимания их контекста. Популяция пейотного кактуса истощается из-за психоделического туризма. Популяция жабы Bufo alvarius под угрозой из-за массовых церемоний.
-
-Рост популярности камбо на Западе поднял острый вопрос о правах племён Катукина, Яваnаhua и других на свои знания. Бразильское правительство запретило коммерциализацию камбо в 2004 году именно после жалоб традиционных сообществ.
-
-Что можно делать:
-— Узнавать о происхождении практики которую ты используешь
-— Поддерживать организации защищающие права коренных народов
-— Выбирать ретриты и организаторов которые работают с коренными сообществами а не вопреки им`,
-      },
-      {
-        emoji: "💊",
-        title: "Психоделический ренессанс — кому он служит",
-        tag: "Критический взгляд",
-        text: `Мы живём в период беспрецедентного интереса к психоделикам со стороны науки, медицины и бизнеса. Это хорошая новость — и одновременно повод для внимательности.
-
-Хорошее. Клинические исследования псилоцибина, МДМА и кетамина показывают реальные результаты в лечении депрессии, ПТСР, зависимостей. Это меняет психиатрию.
-
-Тревожное. Корпоратизация психоделической медицины создаёт риск что терапия станет доступной только для состоятельных людей. Венчурный капитал входит в пространство которое десятилетиями развивалось сообществами, активистами и коренными народами.
-
-Биопиратство масштабируется — компании патентуют производные растений которые использовались тысячелетиями без какой-либо компенсации коренным сообществам.
-
-Доступность. Если психоделическая терапия станет легальной но останется доступной только за тысячи долларов за сессию — ренессанс обслужит рынок, а не людей.
-
-Психоделический ренессанс должен служить людям, а не фармрынку. Это не данность — это то за что нужно работать.`,
-      },
     ],
   },
 
   // ─────────────────────────────────────────────
-  // РАЗДЕЛ 5 — РАСТЕНИЯ, ВЕЩЕСТВА И ПРАКТИКИ
+  // РАЗДЕЛ 5, РАСТЕНИЯ, ВЕЩЕСТВА И ПРАКТИКИ
   // ─────────────────────────────────────────────
   {
     id: "substances",
@@ -3381,73 +3415,73 @@ const LIBRARY_SECTIONS = [
         emoji: "🍄‍🟫",
         title: "Псилоцибиновые грибы",
         tag: "Классический психоделик",
-        text: `Более 180 видов грибов содержат псилоцибин и псилоцин. В языке ацтеков назывались «теонанакатль» — плоть богов. Используются мазатеками и другими мезоамериканскими культурами тысячи лет.
+        text: `Более 180 видов грибов содержат псилоцибин и псилоцин. В языке ацтеков назывались «теонанакатль», плоть богов. Используются мазатеками и другими мезоамериканскими культурами тысячи лет.
 
-Псилоцибин был выделен Альбертом Хофманном в 1958 году из мексиканских грибов. В организме превращается в псилоцин — психоактивное вещество действующее на серотониновые 5-HT2A рецепторы.
+Псилоцибин был выделен Альбертом Хофманном в 1958 году из мексиканских грибов. В организме превращается в псилоцин, психоактивное вещество действующее на серотониновые 5-HT2A рецепторы.
 
-Эффекты начинаются через 30 минут и длятся 4–6 часов. Интенсивные изменения восприятия, настроения и сознания. Возможны яркие визуальные образы с закрытыми глазами, растворение границ эго, мистические переживания. По данным Global Drug Survey — вещество с наименьшим количеством обращений за экстренной медицинской помощью среди всех психоделиков.
+Эффекты начинаются через 30 минут и длятся 4–6 часов. Интенсивные изменения восприятия, настроения и сознания. Возможны яркие визуальные образы с закрытыми глазами, растворение границ эго, мистические переживания. По данным Global Drug Survey, вещество с наименьшим количеством обращений за экстренной медицинской помощью среди всех психоделиков.
 
-Дозировка (сухие грибы Psilocybe cubensis): микродоза — до 0,25 г, низкая — 0,25–1 г, средняя — 1–2,5 г, высокая — 2,5–5 г, очень высокая — более 5 г.
+Дозировка (сухие грибы Psilocybe cubensis): микродоза, до 0,25 г, низкая, 0,25–1 г, средняя, 1–2,5 г, высокая, 2,5–5 г, очень высокая, более 5 г.
 
 Снижение рисков. Главное это сет и сеттинг. В период сильного стресса лучше повременить. Депрессия это не запрет: псилоцибин изучается и применяется при депрессии, но работать с ней стоит под наблюдением специалиста, а не в одиночку. При сборе в природе обязательна точная идентификация: некоторые виды рода Galerina смертельно ядовиты. Людям с историей психоза или биполярного расстройства только в клиническом контексте.
 
-Правовой статус. Псилоцибин и псилоцин — Список I Венской конвенции 1971 года. В большинстве стран незаконны.`,
+Правовой статус. Псилоцибин и псилоцин, Список I Венской конвенции 1971 года. В большинстве стран незаконны.`,
       },
       {
         emoji: "🌿",
         title: "Аяуаска",
         tag: "Растительный отвар",
-        text: `«Аяуаска» на языке кечуа — «верёвка мёртвых» или «лиана мёртвых». Отвар из лианы Banisteriopsis caapi и листьев Psychotria viridis — источника ДМТ. Бета-карболины лианы ингибируют МАО, позволяя ДМТ действовать орально. Используется коренными народами Амазонии на протяжении веков.
+        text: `«Аяуаска» на языке кечуа, «верёвка мёртвых» или «лиана мёртвых». Отвар из лианы Banisteriopsis caapi и листьев Psychotria viridis, источника ДМТ. Бета-карболины лианы ингибируют МАО, позволяя ДМТ действовать орально. Используется коренными народами Амазонии на протяжении веков.
 
-Первое документальное упоминание — иезуитские миссионеры в 1737 году. В последние десятилетия распространилась по всему миру через церкви Санто-Дайми, Уняо до Вежетал и неошаманические практики.
+Первое документальное упоминание, иезуитские миссионеры в 1737 году. В последние десятилетия распространилась по всему миру через церкви Санто-Дайми, Уняо до Вежетал и неошаманические практики.
 
-Эффекты длятся 4–6 часов: интенсивные видения, глубокая интроспекция, встречи с сущностями, тошнота и рвота — традиционно воспринимается как очищение. Исследования показывают антидепрессивный и противотревожный потенциал при длительном использовании.
+Эффекты длятся 4–6 часов: интенсивные видения, глубокая интроспекция, встречи с сущностями, тошнота и рвота, традиционно воспринимается как очищение. Исследования показывают антидепрессивный и противотревожный потенциал при длительном использовании.
 
-Снижение рисков. Строгие противопоказания по препаратам: антидепрессанты (особенно СИОЗС), ИМАО, амфетамины, МДМА — опасные сочетания, возможен гипертонический криз. Нельзя сочетать с Буфо альвариус — ждать минимум 24 часа. Психологические противопоказания: шизофрения, биполярное расстройство, пограничное расстройство личности. Качество церемонии и надёжность ведущего критически важны.
+Снижение рисков. Строгие противопоказания по препаратам: антидепрессанты (особенно СИОЗС), ИМАО, амфетамины, МДМА, опасные сочетания, возможен гипертонический криз. Нельзя сочетать с Буфо альвариус, ждать минимум 24 часа. Психологические противопоказания: шизофрения, биполярное расстройство, пограничное расстройство личности. Качество церемонии и надёжность ведущего критически важны.
 
-Правовой статус. ДМТ — вещество Списка I. Сам отвар не находится под международным контролем, но правовой статус варьируется по странам. В России — незаконна.`,
+Правовой статус. ДМТ, вещество Списка I. Сам отвар не находится под международным контролем, но правовой статус варьируется по странам. В России, незаконна.`,
       },
       {
         emoji: "🌵",
         title: "Пейот",
         tag: "Священный кактус",
-        text: `Lophophora williamsii — безколючковый кактус пустынь северной Мексики и юго-запада США. Растёт очень медленно — до 15–20 лет до зрелости. Основное психоактивное вещество — мескалин. Древнейшие образцы найдены в пещере в Техасе — возраст 3780–3660 до н.э., содержали 2% мескалина.
+        text: `Lophophora williamsii, безколючковый кактус пустынь северной Мексики и юго-запада США. Растёт очень медленно, до 15–20 лет до зрелости. Основное психоактивное вещество, мескалин. Древнейшие образцы найдены в пещере в Техасе, возраст 3780–3660 до н.э., содержали 2% мескалина.
 
-Среди народов Wixarika (Уичоль) пейот занимает центральное место в духовной жизни. Ежегодное паломничество в Wirikuta — священнейший акт их календаря. Сегодня около 250 000 членов Нативной американской церкви используют пейот как религиозное таинство.
+Среди народов Wixarika (Уичоль) пейот занимает центральное место в духовной жизни. Ежегодное паломничество в Wirikuta, священнейший акт их календаря. Сегодня около 250 000 членов Нативной американской церкви используют пейот как религиозное таинство.
 
-Эффекты начинаются через 2–3 часа и длятся 10–14 часов. Яркие видения, глубокие изменения восприятия, духовные переживания. Тошнота и рвота — частые спутники. Мескалин немного более стимулирующий чем псилоцибин.
+Эффекты начинаются через 2–3 часа и длятся 10–14 часов. Яркие видения, глубокие изменения восприятия, духовные переживания. Тошнота и рвота, частые спутники. Мескалин немного более стимулирующий чем псилоцибин.
 
-Дозировка мескалина: пороговая — 100 мг, низкая — 100–200 мг, средняя — 200–300 мг, высокая — 300–500 мг.
+Дозировка мескалина: пороговая, 100 мг, низкая, 100–200 мг, средняя, 200–300 мг, высокая, 300–500 мг.
 
-Снижение рисков. Эффекты появляются медленно — не повторять дозу. Не сочетать со стимуляторами. Пейот — охраняемый вид под угрозой исчезновения из-за чрезмерного сбора.
+Снижение рисков. Эффекты появляются медленно, не повторять дозу. Не сочетать со стимуляторами. Пейот, охраняемый вид под угрозой исчезновения из-за чрезмерного сбора.
 
-Правовой статус. Мескалин — Список I. В США использование разрешено только членам Нативной американской церкви.`,
+Правовой статус. Мескалин, Список I. В США использование разрешено только членам Нативной американской церкви.`,
       },
       {
         emoji: "🌵",
         title: "Сан-Педро",
         tag: "Андский кактус",
-        text: `Echinopsis pachanoi — колонновидный кактус Южной Америки с историей использования более 8000 лет. Ископаемые остатки датируются 6800–6200 до н.э. — один из древнейших известных психоактивных растений. Традиционный ритуал — «меса». В андской медицине используется целителями Yachakkuna для диагностики болезней и очищения.
+        text: `Echinopsis pachanoi, колонновидный кактус Южной Америки с историей использования более 8000 лет. Ископаемые остатки датируются 6800–6200 до н.э., один из древнейших известных психоактивных растений. Традиционный ритуал, «меса». В андской медицине используется целителями Yachakkuna для диагностики болезней и очищения.
 
-Содержит мескалин — эффекты аналогичны пейоту, длительность 10–14 часов. Горький вкус, часто вызывает тошноту. Концентрация мескалина варьируется от 0,053% до 4,7% — дозировка непредсказуема.
+Содержит мескалин, эффекты аналогичны пейоту, длительность 10–14 часов. Горький вкус, часто вызывает тошноту. Концентрация мескалина варьируется от 0,053% до 4,7%, дозировка непредсказуема.
 
-Дозировка мескалина та же что для пейота: средняя — 200–300 мг. Традиционные дозы обычно ниже психоактивного порога.
+Дозировка мескалина та же что для пейота: средняя, 200–300 мг. Традиционные дозы обычно ниже психоактивного порога.
 
-Снижение рисков. Те же правила что для пейота. Эффекты появляются через 2 часа — не торопиться с повторной дозой. Не сочетать со стимуляторами. В отличие от пейота сан-педро растёт быстро и не находится под угрозой исчезновения.
+Снижение рисков. Те же правила что для пейота. Эффекты появляются через 2 часа, не торопиться с повторной дозой. Не сочетать со стимуляторами. В отличие от пейота сан-педро растёт быстро и не находится под угрозой исчезновения.
 
-Правовой статус. Мескалин — Список I. Кактус как растение в большинстве стран не контролируется, но приготовление отвара для употребления может быть незаконным.`,
+Правовой статус. Мескалин, Список I. Кактус как растение в большинстве стран не контролируется, но приготовление отвара для употребления может быть незаконным.`,
       },
       {
         emoji: "🌳",
         title: "Ибога",
         tag: "Африканский кустарник",
-        text: `Tabernanthe iboga — кустарник тропической Западной Африки. Центральное место в ритуалах инициации культуры Бвити в Габоне. Ритуал длится пять дней и символизирует смерть и перерождение — человека бережно ведут через него всем сообществом. Основной алкалоид — ибогаин.
+        text: `Tabernanthe iboga, кустарник тропической Западной Африки. Центральное место в ритуалах инициации культуры Бвити в Габоне. Ритуал длится пять дней и символизирует смерть и перерождение, человека бережно ведут через него всем сообществом. Основной алкалоид, ибогаин.
 
 В 1962 году Говард Лотсоф обнаружил антиаддиктивные свойства: шесть из семи его друзей с героиновой зависимостью после однократного приёма прекратили употребление без синдрома отмены. Сегодня клиники ибогаина работают в Бразилии, Мексике, Таиланде, ЮАР.
 
-Опыт описывают как глубоко психотерапевтический — «онейрофренический»: состояние бодрствующего сна с интенсивной визуальной интроспекцией длиной 7–12 часов. Ибогаин особенно эффективен при опиоидной зависимости через уникальный механизм нейропластичности (GDNF).
+Опыт описывают как глубоко психотерапевтический, «онейрофренический»: состояние бодрствующего сна с интенсивной визуальной интроспекцией длиной 7–12 часов. Ибогаин особенно эффективен при опиоидной зависимости через уникальный механизм нейропластичности (GDNF).
 
-Снижение рисков. Серьёзные кардиологические риски — обязательны ЭКГ и медицинский контроль. Противопоказан при болезнях сердца, аритмии. Опасные взаимодействия с многими препаратами. Только в контролируемых условиях с медицинским персоналом.
+Снижение рисков. Серьёзные кардиологические риски, обязательны ЭКГ и медицинский контроль. Противопоказан при болезнях сердца, аритмии. Опасные взаимодействия с многими препаратами. Только в контролируемых условиях с медицинским персоналом.
 
 Правовой статус. Не входит в списки ООН, но незаконен в США, Австралии, Бельгии, Франции, Швейцарии и ряде других стран.`,
       },
@@ -3455,13 +3489,13 @@ const LIBRARY_SECTIONS = [
         emoji: "🌀",
         title: "Сальвия дивинорум",
         tag: "Диссоциатив · Особый механизм",
-        text: `Многолетнее растение из гор Сьерра-Мадре в Мексике. Используется масатеками для гадания и лечения. По словам Марии Сабины — применялась когда не хватало грибов. Активное вещество — сальвинорин А: наиболее мощное природное психоактивное вещество из известных, в 10 раз сильнее псилоцибина. Действует на каппа-опиоидные рецепторы — принципиально другой механизм чем классические психоделики.
+        text: `Многолетнее растение из гор Сьерра-Мадре в Мексике. Используется масатеками для гадания и лечения. По словам Марии Сабины, применялась когда не хватало грибов. Активное вещество, сальвинорин А: наиболее мощное природное психоактивное вещество из известных, в 10 раз сильнее псилоцибина. Действует на каппа-опиоидные рецепторы, принципиально другой механизм чем классические психоделики.
 
-Традиционный ритуал: ночью, в тишине и темноте, жевание листьев парами. Сок не глотают — держат во рту для всасывания через слизистую.
+Традиционный ритуал: ночью, в тишине и темноте, жевание листьев парами. Сок не глотают, держат во рту для всасывания через слизистую.
 
-При курении эффекты наступают за секунды, пик — 2–20 минут, общая длительность около 30 минут. Возможны: глубокие диссоциативные состояния, ощущение слияния с предметами, внетелесные переживания. Около половины людей не повторяют опыт после первого раза.
+При курении эффекты наступают за секунды, пик, 2–20 минут, общая длительность около 30 минут. Возможны: глубокие диссоциативные состояния, ощущение слияния с предметами, внетелесные переживания. Около половины людей не повторяют опыт после первого раза.
 
-Снижение рисков. Высокий риск неприятных опытов особенно при курении экстрактов. На высоких дозах человек не осознаёт окружающей обстановки — реальный риск падений. Обязательно присутствие трезвого сопровождающего. Тихая, безопасная обстановка без посторонних стимулов.
+Снижение рисков. Высокий риск неприятных опытов особенно при курении экстрактов. На высоких дозах человек не осознаёт окружающей обстановки, реальный риск падений. Обязательно присутствие трезвого сопровождающего. Тихая, безопасная обстановка без посторонних стимулов.
 
 Правовой статус. Не входит в списки ООН. Контролируется в Австралии, Японии, ряде штатов США и европейских стран.`,
       },
@@ -3469,13 +3503,13 @@ const LIBRARY_SECTIONS = [
         emoji: "🍄",
         title: "Мухомор (Amanita muscaria)",
         tag: "Особый механизм · Высокий риск",
-        text: `Красная шляпка с белыми точками — один из самых узнаваемых грибов в мире. Используется в шаманских практиках народов Сибири тысячи лет. Первые свидетельства — лингвистический анализ североазиатских языков 4000 лет до н.э. Активные вещества — иботеновая кислота и мусцимол. Механизм действия принципиально отличается от псилоцибина — не серотониновая система.
+        text: `Красная шляпка с белыми точками, один из самых узнаваемых грибов в мире. Используется в шаманских практиках народов Сибири тысячи лет. Первые свидетельства, лингвистический анализ североазиатских языков 4000 лет до н.э. Активные вещества, иботеновая кислота и мусцимол. Механизм действия принципиально отличается от псилоцибина, не серотониновая система.
 
 Сухой гриб сильнее свежего: при сушке иботеновая кислота превращается в более активный мусцимол.
 
 Эффекты наступают через 2–3 часа и длятся 6–8 часов. Три фазы: стимуляция и энергия → сонливость и покой → психоделические эффекты. Возможны потеря равновесия, мышечные спазмы, макропсия/микропсия, тошнота.
 
-Снижение рисков. Концентрация алкалоидов крайне вариабельна — дозировка практически непредсказуема. Критически важна точная идентификация: Amanita phalloides (бледная поганка) внешне похожа и смертельно ядовита. \n\nКрасный (Amanita muscaria) и пантерный (Amanita pantherina) мухоморы это близкие виды. У красного шляпка красная с белыми хлопьями, у пантерного бурая с белыми бородавками. Действующие вещества у них одни и те же, иботеновая кислота и мусцимол, и отравление протекает похоже, его так и называют синдромом пантерина-мускария. Главная опасность не в том, что один «сильнее» другого, а в том, что количество токсинов сильно колеблется от гриба к грибу, и пороговая доза может оказаться даже в одном экземпляре. Поэтому доза непредсказуема. Тяжёлое отравление даёт спутанность, чередование возбуждения и оглушения, мышечные судороги, иногда конвульсии, и специфического антидота нет. Смертельные исходы крайне редки, но именно непредсказуемость дозы и риск тяжёлого делирия делают эти грибы неподходящими для новичков.
+Снижение рисков. Концентрация алкалоидов крайне вариабельна, дозировка практически непредсказуема. Критически важна точная идентификация: Amanita phalloides (бледная поганка) внешне похожа и смертельно ядовита. \n\nКрасный (Amanita muscaria) и пантерный (Amanita pantherina) мухоморы это близкие виды. У красного шляпка красная с белыми хлопьями, у пантерного бурая с белыми бородавками. Действующие вещества у них одни и те же, иботеновая кислота и мусцимол, и отравление протекает похоже, его так и называют синдромом пантерина-мускария. Главная опасность не в том, что один «сильнее» другого, а в том, что количество токсинов сильно колеблется от гриба к грибу, и пороговая доза может оказаться даже в одном экземпляре. Поэтому доза непредсказуема. Тяжёлое отравление даёт спутанность, чередование возбуждения и оглушения, мышечные судороги, иногда конвульсии, и специфического антидота нет. Смертельные исходы крайне редки, но именно непредсказуемость дозы и риск тяжёлого делирия делают эти грибы неподходящими для новичков.
 
 Правовой статус. Не контролируется в большинстве стран. Запрещена в Нидерландах, Великобритании и Румынии.`,
       },
@@ -3483,31 +3517,31 @@ const LIBRARY_SECTIONS = [
         emoji: "🌾",
         title: "Рапе",
         tag: "Священная смесь",
-        text: `Рапе (произносится «ра-пэ») — сакральная смесь тонко измельчённого табака и золы различных растений, используемая коренными народами Амазонии. Состав варьируется в зависимости от племени и назначения — именно зола различных растений определяет «сорт» рапе и его свойства. Традиция использования насчитывает сотни лет среди народов Катукина, Яваnаhua, Хуни Куин, Матсес и других.
+        text: `Рапе (произносится «ра-пэ»), сакральная смесь тонко измельчённого табака и золы различных растений, используемая коренными народами Амазонии. Состав варьируется в зависимости от племени и назначения, именно зола различных растений определяет «сорт» рапе и его свойства. Традиция использования насчитывает сотни лет среди народов Катукина, Яваnаhua, Хуни Куин, Матсес и других.
 
-Рапе не вдыхают — его вдувают через специальные трубки. Курипа (или куриппа) — V-образная трубка для самостоятельного применения. Тепи — прямая трубка когда один человек вдувает другому. Порошок наносится поочерёдно в каждую ноздрю.
+Рапе не вдыхают, его вдувают через специальные трубки. Курипа (или куриппа), V-образная трубка для самостоятельного применения. Тепи, прямая трубка когда один человек вдувает другому. Порошок наносится поочерёдно в каждую ноздрю.
 
-Традиционно применяется для очищения, центрирования, открытия церемонии, усиления концентрации и охотничьих практик. Не является психоделиком в классическом смысле — не вызывает галлюцинаций.
+Традиционно применяется для очищения, центрирования, открытия церемонии, усиления концентрации и охотничьих практик. Не является психоделиком в классическом смысле, не вызывает галлюцинаций.
 
-Снижение рисков. Табак в составе — никотиновая нагрузка, не подходит людям с сердечно-сосудистыми заболеваниями. Качество и состав рапе сильно варьируются в зависимости от источника. Важно знать происхождение и состав используемой смеси.
+Снижение рисков. Табак в составе, никотиновая нагрузка, не подходит людям с сердечно-сосудистыми заболеваниями. Качество и состав рапе сильно варьируются в зависимости от источника. Важно знать происхождение и состав используемой смеси.
 
 Дозировка. Действующее вещество в рапэ это никотин, причём табак часто Nicotiana rustica, где никотина в разы больше, чем в сигаретном. Стандартной дозы нет: по химическому анализу содержание никотина в разных рапэ колеблется примерно от 6 до 48 мг на грамм, а у ручных церемониальных смесей со щелочной золой никотин всасывается быстрее и бьёт сильнее. Поэтому одинаковая на вид щепотка из разных смесей может действовать совершенно по-разному.
 
 Чувствительным людям, некурящим и тем, кто легче по весу, осторожнее вдвойне: обычная церемониальная доза может ударить заметно сильнее. Начинай с очень маленького количества, сиди, а не стой, и пусть рядом будет опытный человек. Не добавляй ещё потому что «пока не зацепило»: эффект приходит быстро. В традиции сильную телесную реакцию, слёзы, слюну, испарину, тошноту, часто понимают как очищение, и это нормальная часть практики. Но есть грань: если накрывает резкая слабость, холодный пот, частое или сбивчивое сердцебиение, сильная дурнота, это уже похоже на никотиновую передозировку, и тут нужно остановиться, сесть или лечь и не принимать больше.
 
-Этический вопрос. Как и с другими практиками коренных народов — важно понимать источник и уважать контекст традиции.`,
+Этический вопрос. Как и с другими практиками коренных народов, важно понимать источник и уважать контекст традиции.`,
       },
       {
         emoji: "🐸",
         title: "Буфо альвариус",
         tag: "5-MeO-DMT",
-        text: `Incilius alvarius — жаба из пустыни Сонора (Мексика и юго-запад США). Кожные железы содержат 5-MeO-DMT — одно из самых мощных известных психоактивных веществ. Одна жаба производит до 75 мг этого вещества.
+        text: `Incilius alvarius, жаба из пустыни Сонора (Мексика и юго-запад США). Кожные железы содержат 5-MeO-DMT, одно из самых мощных известных психоактивных веществ. Одна жаба производит до 75 мг этого вещества.
 
-Эффекты при вдыхании паров наступают в течение нескольких секунд, пик — менее 1 минуты, общая продолжительность — 15–20 минут. Описывается как полное растворение эго, ощущение космического единства, опыт смерти и перерождения. Нет визуального контента как у классических психоделиков — только чистое переживание. Очень высокая интенсивность: возможны непроизвольные движения, крики, плач без осознания.
+Эффекты при вдыхании паров наступают в течение нескольких секунд, пик, менее 1 минуты, общая продолжительность, 15–20 минут. Описывается как полное растворение эго, ощущение космического единства, опыт смерти и перерождения. Нет визуального контента как у классических психоделиков, только чистое переживание. Очень высокая интенсивность: возможны непроизвольные движения, крики, плач без осознания.
 
-Снижение рисков. Нельзя сочетать с аяуаской — ждать минимум 24 часа. Нельзя сочетать с ИМАО — задокументированные смерти. Обязательно присутствие трезвого сопровождающего — во время опыта человек теряет контроль над телом.
+Снижение рисков. Нельзя сочетать с аяуаской, ждать минимум 24 часа. Нельзя сочетать с ИМАО, задокументированные смерти. Обязательно присутствие трезвого сопровождающего, во время опыта человек теряет контроль над телом.
 
-Экологический вопрос. Массовый психоделический туризм нанёс серьёзный ущерб популяции жабы. Синтетический 5-MeO-DMT — этичная альтернатива без вреда для животного.
+Экологический вопрос. Массовый психоделический туризм нанёс серьёзный ущерб популяции жабы. Синтетический 5-MeO-DMT, этичная альтернатива без вреда для животного.
 
 Правовой статус. 5-MeO-DMT не входит в списки ООН, но контролируется в США (Список I) и Великобритании.`,
       },
@@ -3515,11 +3549,11 @@ const LIBRARY_SECTIONS = [
         emoji: "🐸",
         title: "Камбо",
         tag: "Очищение · Не психоделик",
-        text: `Камбо — секрет кожи лягушки Phyllomedusa bicolor из амазонских лесов. Используется племенами Катукина, Яваnаhua, Кашинауа и Матсес. Традиционно применяется для очищения тела и духа, лечения «панамы» (неудачи на охоте) и укрепления силы. Лягушка не убивается — после извлечения секрета отпускается обратно в лес.
+        text: `Камбо, секрет кожи лягушки Phyllomedusa bicolor из амазонских лесов. Используется племенами Катукина, Яваnаhua, Кашинауа и Матсес. Традиционно применяется для очищения тела и духа, лечения «панамы» (неудачи на охоте) и укрепления силы. Лягушка не убивается, после извлечения секрета отпускается обратно в лес.
 
-Камбо не является психоделиком и не вызывает галлюцинаций. Содержит биоактивные пептиды воздействующие на сердечно-сосудистую и желудочно-кишечную системы. Наносится на небольшие ожоги на коже. Острые эффекты: учащение пульса до 190 уд/мин, изменение давления, потоотделение, тошнота, рвота, диарея — длятся 5–20 минут. После — ощущение ясности и силы.
+Камбо не является психоделиком и не вызывает галлюцинаций. Содержит биоактивные пептиды воздействующие на сердечно-сосудистую и желудочно-кишечную системы. Наносится на небольшие ожоги на коже. Острые эффекты: учащение пульса до 190 уд/мин, изменение давления, потоотделение, тошнота, рвота, диарея, длятся 5–20 минут. После, ощущение ясности и силы.
 
-Снижение рисков. Противопоказан при болезнях сердца и высоком давлении. Зафиксированы случаи гепатита и как минимум один случай внезапной смерти. Гипонатриемия — реальный риск при избыточном питье воды (6–10 литров опасны). Нет клинических исследований.
+Снижение рисков. Противопоказан при болезнях сердца и высоком давлении. Зафиксированы случаи гепатита и как минимум один случай внезапной смерти. Гипонатриемия, реальный риск при избыточном питье воды (6–10 литров опасны). Нет клинических исследований.
 
 Биопиратство. Рост популярности камбо на Западе поднял острый вопрос о правах коренных народов. В Бразилии запрещена коммерциализация с 2004 года после жалоб традиционных сообществ.
 
@@ -3529,11 +3563,11 @@ const LIBRARY_SECTIONS = [
         emoji: "⚗️",
         title: "ДМТ",
         tag: "Синтетическое · Эндогенное",
-        text: `N,N-диметилтриптамин присутствует в десятках растений и, по имеющимся данным, вырабатывается в самом организме человека — обнаружен в крови, моче и спинномозговой жидкости. В аяуаске активируется орально благодаря ИМАО. В чистом виде неактивен орально — используется в форме курения или вдыхания.
+        text: `N,N-диметилтриптамин присутствует в десятках растений и, по имеющимся данным, вырабатывается в самом организме человека, обнаружен в крови, моче и спинномозговой жидкости. В аяуаске активируется орально благодаря ИМАО. В чистом виде неактивен орально, используется в форме курения или вдыхания.
 
 Опыт при курении длится 10–20 минут но субъективно воспринимается как значительно дольше. Немедленное и тотальное изменение реальности. Характерны встречи с сущностями, геометрические гиперпространства, ощущение контакта с иными измерениями. Многие описывают как наиболее интенсивный опыт в своей жизни.
 
-Снижение рисков. Нельзя сочетать с ИМАО без специальной подготовки — опасное взаимодействие. Обязательно сидячее или лежачее положение — полная потеря двигательного контроля. Присутствие сопровождающего. Опыт может быть психологически тяжёлым — не подходит при нестабильном психическом состоянии.
+Снижение рисков. Нельзя сочетать с ИМАО без специальной подготовки, опасное взаимодействие. Обязательно сидячее или лежачее положение, полная потеря двигательного контроля. Присутствие сопровождающего. Опыт может быть психологически тяжёлым, не подходит при нестабильном психическом состоянии.
 
 Правовой статус. Список I в большинстве стран.`,
       },
@@ -3541,29 +3575,29 @@ const LIBRARY_SECTIONS = [
         emoji: "💊",
         title: "МДМА",
         tag: "Синтетическое · Терапевтический контекст",
-        text: `3,4-метилендиоксиметамфетамин. Синтезирован в 1912 году. В 1970–80-х использовался психотерапевтами до запрета. Не классический психоделик — эмпатоген/энтакторен. Механизм: массивный выброс серотонина, дофамина и норадреналина.
+        text: `3,4-метилендиоксиметамфетамин. Синтезирован в 1912 году. В 1970–80-х использовался психотерапевтами до запрета. Не классический психоделик, эмпатоген/энтакторен. Механизм: массивный выброс серотонина, дофамина и норадреналина.
 
-Терапевтический потенциал. MAPS провела Фазу 3 клинических испытаний МДМА-ассистированной терапии ПТСР. Результаты: 67% участников больше не соответствовали критериям ПТСР после трёх сессий. Механизм — временное снижение активности миндалины позволяет работать с травматическим материалом без захлёстывающего страха.
+Терапевтический потенциал. MAPS провела Фазу 3 клинических испытаний МДМА-ассистированной терапии ПТСР. Результаты: 67% участников больше не соответствовали критериям ПТСР после трёх сессий. Механизм, временное снижение активности миндалины позволяет работать с травматическим материалом без захлёстывающего страха.
 
 Эффекты длятся 3–5 часов: эйфория, эмпатия, открытость, снижение страха и самокритики.
 
-Снижение рисков. Гипертермия — главный физический риск при активности. Нельзя сочетать с ИМАО, литием, многими антидепрессантами. Нейротоксичность при частом использовании. Рекомендуемый интервал — минимум 3 месяца. Противопоказан при болезнях сердца, гипертонии, биполярном расстройстве.
+Снижение рисков. Гипертермия, главный физический риск при активности. Нельзя сочетать с ИМАО, литием, многими антидепрессантами. Нейротоксичность при частом использовании. Рекомендуемый интервал, минимум 3 месяца. Противопоказан при болезнях сердца, гипертонии, биполярном расстройстве.
 
-Правовой статус. Список I в большинстве стран. В терапевтических протоколах — под медицинским контролем.`,
+Правовой статус. Список I в большинстве стран. В терапевтических протоколах, под медицинским контролем.`,
       },
       {
         emoji: "🔬",
         title: "ЛСД",
         tag: "Синтетическое · Полувековая история",
-        text: `Диэтиламид лизергиновой кислоты. Синтезирован Альбертом Хофманном в 1938 году, психоактивные свойства обнаружены случайно в 1943-м. Производное спорыньи — паразитического гриба ржи. Действует на серотониновые 5-HT2A рецепторы — тот же механизм что псилоцибин и мескалин, но с более длительным эффектом.
+        text: `Диэтиламид лизергиновой кислоты. Синтезирован Альбертом Хофманном в 1938 году, психоактивные свойства обнаружены случайно в 1943-м. Производное спорыньи, паразитического гриба ржи. Действует на серотониновые 5-HT2A рецепторы, тот же механизм что псилоцибин и мескалин, но с более длительным эффектом.
 
-Хофманн о первом опыте: «Привычная реальность и эго которое её переживало — растворились. И незнакомое эго испытало иную, незнакомую реальность».
+Хофманн о первом опыте: «Привычная реальность и эго которое её переживало, растворились. И незнакомое эго испытало иную, незнакомую реальность».
 
-Эффекты длятся 8–12 часов, иногда до 14. Классические психоделические эффекты с особым акцентом на визуальные изменения — усиление цветов, движение поверхностей, синестезия. Более стимулирующий чем псилоцибин.
+Эффекты длятся 8–12 часов, иногда до 14. Классические психоделические эффекты с особым акцентом на визуальные изменения, усиление цветов, движение поверхностей, синестезия. Более стимулирующий чем псилоцибин.
 
-Дозировка: низкая — 50–75 мкг, средняя — 100–150 мкг, высокая — 200–400 мкг.
+Дозировка: низкая, 50–75 мкг, средняя, 100–150 мкг, высокая, 200–400 мкг.
 
-Снижение рисков. Длительность требует особой подготовки пространства и времени — минимум 12 свободных часов. На чёрном рынке часто подделывается другими веществами — тест-полоски обязательны. HPPD (персистирующее расстройство восприятия) — редкий но реальный риск.
+Снижение рисков. Длительность требует особой подготовки пространства и времени, минимум 12 свободных часов. На чёрном рынке часто подделывается другими веществами, тест-полоски обязательны. HPPD (персистирующее расстройство восприятия), редкий но реальный риск.
 
 Правовой статус. Список I практически везде.`,
       },
@@ -3571,13 +3605,13 @@ const LIBRARY_SECTIONS = [
         emoji: "🌬️",
         title: "Холотропное дыхание",
         tag: "Практика · Без вещества",
-        text: `Разработано Станиславом Грофом и Кристиной Гроф в 1970-х как немедикаментозный метод доступа к расширенным состояниям сознания. Гроф создал его после запрета ЛСД — как легальную альтернативу для психотерапевтической работы.
+        text: `Разработано Станиславом Грофом и Кристиной Гроф в 1970-х как немедикаментозный метод доступа к расширенным состояниям сознания. Гроф создал его после запрета ЛСД, как легальную альтернативу для психотерапевтической работы.
 
-Метод сочетает три элемента: учащённое дыхание (гипервентиляция по специальной схеме), специально подобранную музыку и работу с телом при необходимости. Сессия длится 2–3 часа, после — интеграция через рисование мандалы и вербальное обсуждение. Работа всегда в парах: дышащий и ситтер (сопровождающий).
+Метод сочетает три элемента: учащённое дыхание (гипервентиляция по специальной схеме), специально подобранную музыку и работу с телом при необходимости. Сессия длится 2–3 часа, после, интеграция через рисование мандалы и вербальное обсуждение. Работа всегда в парах: дышащий и ситтер (сопровождающий).
 
 Состояния могут быть очень интенсивными и сопоставимы с психоделическими опытами: встречи с архетипическими образами, проживание перинатальных матриц (по Грофу), телесные катарсисы, мистические переживания.
 
-Снижение рисков. Противопоказано при сердечно-сосудистых заболеваниях, эпилепсии, глаукоме, беременности, острых психотических состояниях. Гипервентиляция вызывает физиологические изменения — обязательно медицинское собеседование перед участием. Требует подготовленного фасилитатора — не подходит для самостоятельной практики.
+Снижение рисков. Противопоказано при сердечно-сосудистых заболеваниях, эпилепсии, глаукоме, беременности, острых психотических состояниях. Гипервентиляция вызывает физиологические изменения, обязательно медицинское собеседование перед участием. Требует подготовленного фасилитатора, не подходит для самостоятельной практики.
 
 Холотропное дыхание показывает: доступ к глубинным слоям психики возможен не только через химию.`,
       },
@@ -3603,7 +3637,9 @@ function LibraryPage() {
 
   return (
     <Screen>
-      <SectionTitle size={28}>БАЗА ЗНАНИЙ</SectionTitle>
+      <div style={{ display:"flex", alignItems:"center", gap:10, color:"#000", marginBottom:6 }}>
+        <HeadBook /><SectionTitle size={28} style={{ marginBottom: 0 }}>БАЗА ЗНАНИЙ</SectionTitle>
+      </div>
       <Sub>Подготовка · Интеграция · Вещества и растения</Sub>
 
       <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
@@ -3932,33 +3968,33 @@ const DIFFICULT_TOPICS = [
     emoji: "🌑",
     title: "Тёмная ночь души",
     tag: "Что это",
-    text: `Термин пришёл от испанского мистика XVI века Иоанна Креста. В психологию его ввели Станислав и Кристина Гроф — они разграничили духовные переживания от психотических эпизодов.
+    text: `Термин пришёл от испанского мистика XVI века Иоанна Креста. В психологию его ввели Станислав и Кристина Гроф, они разграничили духовные переживания от психотических эпизодов.
 
-Тёмная ночь — это состояние глубокой дезориентации. Ощущение что всё прежнее рухнуло, привычные опоры исчезли. Это не психоз.
+Тёмная ночь это состояние глубокой дезориентации. Ощущение что всё прежнее рухнуло, привычные опоры исчезли. Это не психоз.
 
-Ключевое отличие: человек в состоянии духовного кризиса сохраняет нить осознанности. Он знает что с ним происходит что-то необычное. Он пугается — но не теряет связь с реальностью полностью.
+Ключевое отличие: человек в состоянии духовного кризиса сохраняет нить осознанности. Он знает что с ним происходит что-то необычное. Он пугается, но не теряет связь с реальностью полностью.
 
-Если ты прошёл через это — ты не сломан. Ты проходишь через трансформацию. Это не конец. Это, возможно, начало.`,
+Если ты прошёл через это, ты не сломан. Ты проходишь через трансформацию. Это не конец. Это, возможно, начало.`,
   },
   {
     emoji: "🪞",
     title: "Духовный байпас",
     tag: "Ловушка",
-    text: `Духовный байпас — это когда психоделический или духовный опыт используется как способ избежать реальной психологической работы.
+    text: `Духовный байпас это когда психоделический или духовный опыт используется как способ избежать реальной психологической работы.
 
-Вместо того чтобы встретиться с болью, тревогой, непроработанной травмой — человек прячется за инсайтом. «Я всё понял на церемонии», «я уже через это прошёл» — и реальная работа не делается.
+Вместо того чтобы встретиться с болью, тревогой, непроработанной травмой, человек прячется за инсайтом. «Я всё понял на церемонии», «я уже через это прошёл», и реальная работа не делается.
 
 Это выглядит как интеграция. Но ею не является.
 
 Признаки: ощущение что ты «выше» проблем обычной жизни, избегание терапии с помощью духовных объяснений, постоянный поиск новых опытов вместо проработки старых.
 
-Инсайт — это не работа. Инсайт — это приглашение к работе.`,
+Инсайт это не работа. Инсайт это приглашение к работе.`,
   },
   {
     emoji: "🧭",
     title: "Как работать с трудным опытом",
     tag: "Практика",
-    text: `Если опыт был тяжёлым — первое что нужно это признать это. Просто признать: да, это было тяжело.
+    text: `Если опыт был тяжёлым, первое что нужно это признать. Просто признать: да, это было тяжело.
 
 Заземление. Вернись в тело. Почувствуй ноги на полу. Выпей воды. Физический контакт с реальностью помогает нервной системе успокоиться.
 
@@ -3978,7 +4014,9 @@ function CrisisPage() {
 
   if (mode === null) return (
     <Screen>
-      <SectionTitle size={28}>КРИЗИС</SectionTitle>
+      <div style={{ display:"flex", alignItems:"center", gap:10, color:"#000", marginBottom:6 }}>
+        <HeadAlert /><SectionTitle size={28} style={{ marginBottom: 0 }}>КРИЗИС</SectionTitle>
+      </div>
       <Sub>Выбери что тебе нужно прямо сейчас</Sub>
 
       <div style={{ display:"flex", flexDirection:"column", gap:12, marginTop:8 }}>
@@ -4039,20 +4077,16 @@ function CrisisPage() {
       <EmergencyNumbers />
 
       <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:4 }}>
-        <a href="https://t.me/psychonaut_support_bot" style={{
+        <a href="https://ayawaskaretreat.com/ru/integration" target="_blank" rel="noopener noreferrer"
+          onClick={(e) => {
+            const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+            if (tg && tg.openLink) { e.preventDefault(); tg.openLink("https://ayawaskaretreat.com/ru/integration"); }
+          }}
+          style={{
           display:"block", background:"var(--surface)", boxShadow:"var(--raised)", color:"#000080",
-          padding:"14px", borderRadius:10, textDecoration:"none",
-          fontWeight:600, fontSize:14, textAlign:"center",
+          padding:"14px", textDecoration:"none",
+          fontWeight:700, fontSize:14, textAlign:"center",
           fontFamily:"'Montserrat', sans-serif",
-        }}>
-          @psychonaut_support_bot
-        </a>
-        <a href="https://ayawaskaretreat.com/ru/integration" style={{
-          display:"block", background:"transparent", color:T.accent,
-          padding:"12px", borderRadius:10, textDecoration:"none",
-          fontWeight:600, fontSize:13, textAlign:"center",
-          fontFamily:"'Montserrat', sans-serif",
-          border:`1.5px solid ${T.accent}`,
         }}>
           ayawaskaretreat.com → Интеграция
         </a>
@@ -4103,20 +4137,16 @@ function CrisisPage() {
       </div>
 
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-        <a href="https://t.me/psychonaut_support_bot" style={{
+        <a href="https://ayawaskaretreat.com/ru/integration" target="_blank" rel="noopener noreferrer"
+          onClick={(e) => {
+            const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+            if (tg && tg.openLink) { e.preventDefault(); tg.openLink("https://ayawaskaretreat.com/ru/integration"); }
+          }}
+          style={{
           display:"block", background:"var(--surface)", boxShadow:"var(--raised)", color:"#000080",
-          padding:"14px", borderRadius:10, textDecoration:"none",
-          fontWeight:600, fontSize:14, textAlign:"center",
+          padding:"14px", textDecoration:"none",
+          fontWeight:700, fontSize:14, textAlign:"center",
           fontFamily:"'Montserrat', sans-serif",
-        }}>
-          @psychonaut_support_bot
-        </a>
-        <a href="https://ayawaskaretreat.com/ru/integration" style={{
-          display:"block", background:"transparent", color:T.accent,
-          padding:"12px", borderRadius:10, textDecoration:"none",
-          fontWeight:600, fontSize:13, textAlign:"center",
-          fontFamily:"'Montserrat', sans-serif",
-          border:`1.5px solid ${T.accent}`,
         }}>
           ayawaskaretreat.com → Интеграция
         </a>
@@ -4132,9 +4162,10 @@ const uid = () => ++nextId;
 
 
 const CURATED_MUSIC = [
-  { title:"East Forest — Music for Mushrooms", note:"Цельное пятичасовое полотно на всю сессию. Написано специально под псилоцибиновый опыт.", url:"https://open.spotify.com/album/2LFyfGcBrrsvF8tECUs5gK" },
-  { title:"Johns Hopkins — плейлист Уильяма Ричардса", note:"Классика и сакральная музыка под всю дугу сессии, от захода до возвращения. Из исследований псилоцибина.", url:"https://open.spotify.com/playlist/7aVExA8Lb72NFNbRBZfJLJ" },
-  { title:"Jon Hopkins — Music for Psychedelic Therapy", note:"Спокойный эмбиент, хорош для подготовки, захода и заземления.", url:"https://open.spotify.com/album/2zY5p176SfmupXceLKT6bH" },
+  { title:"East Forest, Music for Mushrooms", note:"Цельное пятичасовое полотно на всю сессию. Написано специально под псилоцибиновый опыт.", url:"https://open.spotify.com/album/2LFyfGcBrrsvF8tECUs5gK" },
+  { title:"Johns Hopkins, плейлист Уильяма Ричардса", note:"Классика и сакральная музыка под всю дугу сессии, от захода до возвращения. Из исследований псилоцибина.", url:"https://open.spotify.com/playlist/7aVExA8Lb72NFNbRBZfJLJ" },
+  { title:"Jon Hopkins, Music for Psychedelic Therapy", note:"Спокойный эмбиент, хорош для подготовки, захода и заземления.", url:"https://open.spotify.com/album/2zY5p176SfmupXceLKT6bH" },
+  { title:"Marconi Union, Weightless (10 часов)", note:"Медленный эмбиент без ритма и резких переходов, создан вместе с терапевтами звука для снижения тревоги. Не для пика, а для заземления, выхода и сна после опыта.", url:"https://music.apple.com/br/album/weightless-10-hour-version/1325524252?i=1325524269&l=en-GB" },
 ];
 
 function openMusicLink(u) {
@@ -4182,7 +4213,9 @@ function MusicPage({ onBack }) {
   return (
     <Screen>
       <BackBtn onClick={onBack} />
-      <SectionTitle size={28}>МУЗЫКА</SectionTitle>
+      <div style={{ display:"flex", alignItems:"center", gap:10, color:"#000", marginBottom:6 }}>
+        <HeadMusic /><SectionTitle size={28} style={{ marginBottom: 0 }}>МУЗЫКА</SectionTitle>
+      </div>
       <Sub>Музыка ничего не весит: мы храним только ссылки, подборки открываются в твоём Spotify или другом приложении. Личные ссылки сохраняются в твоём Telegram.</Sub>
 
       <div style={{ ...heading, margin:"18px 0 10px" }}>Подборка от приложения</div>
@@ -4348,7 +4381,7 @@ export default function App() {
   const [trackerUpgrade, setTrackerUpgrade] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // New session flow — persisted in sessionStorage to survive tab switches
+  // New session flow, persisted in sessionStorage to survive tab switches
   const [flowStep, setFlowStep] = useState(() => {
     try { return parseInt(sessionStorage.getItem("flowStep") || "0"); } catch { return 0; }
   });
@@ -4434,7 +4467,7 @@ export default function App() {
           if (lockRaw) { try { setLocker(JSON.parse(lockRaw) || []); } catch {} }
           const prem = await storeGet(PREMIUM_KEY);
           if (prem === "1") setIsPremium(true);
-          // Сервер — источник истины: подтягиваем реальный статус премиума.
+          // Сервер, источник истины: подтягиваем реальный статус премиума.
           const serverPrem = await apiPremiumStatus();
           if (!cancelled && serverPrem) setIsPremium(!!serverPrem.premium);
         }
@@ -4474,7 +4507,7 @@ export default function App() {
     storeSet(PREMIUM_KEY, isPremium ? "1" : "");
   }, [isPremium, loaded]);
 
-  // Simple flow data save — just updates React state and sessionStorage
+  // Simple flow data save, just updates React state and sessionStorage
   const saveFlowData = (data) => {
     flowDataRef.current = data;
     setFlowData(data);
@@ -4489,7 +4522,7 @@ export default function App() {
     persistDraftNow();
   };
 
-  // Update draft in sessions list — called explicitly, not on every keystroke
+  // Update draft in sessions list, called explicitly, not on every keystroke
   const updateDraftInList = (id, data, step) => {
     setSessions(prev => prev.map(s =>
       s.id === id ? { ...s, ...data, status:"draft", _step: step } : s
@@ -4549,7 +4582,7 @@ export default function App() {
         const answers = Object.values(facetData).filter(Boolean).join(" ");
         return `${FACET_LABELS[k]}: ${answers}`;
       }).join("\n\n");
-      const prompt = `Ты — инструмент психоделической интеграции. Прочитай записи человека по 6 областям жизни после психоделического опыта и оцени каждую область по шкале от 1 до 10, где 1 — очень тяжело/закрыто, 10 — очень хорошо/открыто.
+      const prompt = `Ты, инструмент психоделической интеграции. Прочитай записи человека по 6 областям жизни после психоделического опыта и оцени каждую область по шкале от 1 до 10, где 1, очень тяжело/закрыто, 10, очень хорошо/открыто.
 
 Записи:
 ${facetTexts}
@@ -4557,7 +4590,7 @@ ${facetTexts}
 Ответь ТОЛЬКО валидным JSON без пояснений и markdown:
 {"mind":N,"body":N,"spirit":N,"relations":N,"nature":N,"lifestyle":N}
 
-Где N — целое число от 1 до 10. Если по какой-то области записей нет — поставь 5.`;
+Где N, целое число от 1 до 10. Если по какой-то области записей нет, поставь 5.`;
 
       const res = await fetch(`${API_BASE}/ratings`, {
         method:"POST",
@@ -4567,7 +4600,7 @@ ${facetTexts}
       const data = await res.json();
       const claudeRatings = data.ratings || data;
       s.claudeRatings = claudeRatings;
-    } catch(e) { /* silent fail — no Claude ratings */ }
+    } catch(e) { /* silent fail, no Claude ratings */ }
 
     setSessions(prev => prev.find(x => x.id === s.id)
       ? prev.map(x => x.id === s.id ? s : x)
@@ -4585,7 +4618,7 @@ ${facetTexts}
     setJournalView("list");
   }
 
-  // Гейт закрытого теста имеет приоритет: не из списка — внутрь не пускаем.
+  // Гейт закрытого теста имеет приоритет: не из списка, внутрь не пускаем.
   if (access !== "ok") {
     return (
       <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", position:"relative", overflowX:"hidden" }}>
@@ -4696,7 +4729,7 @@ ${facetTexts}
         }
       }} />
 
-      {/* First launch onboarding — поверх всего */}
+      {/* First launch onboarding, поверх всего */}
       {showOnboarding && <FirstLaunch onAccept={() => setShowOnboarding(false)} />}
     </div>
   );
