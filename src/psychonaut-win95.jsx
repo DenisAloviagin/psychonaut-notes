@@ -772,6 +772,8 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker }
                   fontWeight:700, fontSize:13, letterSpacing:"1px", whiteSpace:"nowrap" }}>Заметки психонавта</span>
               </div>
               <div style={{ flex:1, padding:3 }}>
+                <div onClick={() => { setMenuOpen(false); if (onLocker) onLocker(); }}
+                  style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Шкафчик мыслей</div>
                 {NAV.map(({ id, label }) => (
                   <div key={id} onClick={() => { setMenuOpen(false); onChange(id); }}
                     style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>{label}</div>
@@ -779,10 +781,6 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker }
                 <div style={{ height:2, background:"#808080", borderBottom:"1px solid #fff", margin:"3px 2px" }} />
                 <div onClick={() => { setMenuOpen(false); if (onMusic) onMusic(); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Музыка</div>
-                <div onClick={() => { setMenuOpen(false); if (onLocker) onLocker(); }}
-                  style={{ padding:"6px 10px", fontSize:13, cursor:"pointer", color:"#000", display:"flex", alignItems:"center", gap:8 }}>
-                  <CatalogIcon size={16} /> Шкафчик мыслей
-                </div>
                 <div onClick={() => { setMenuOpen(false); if (onPrivacy) onPrivacy(); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Конфиденциальность</div>
                 <div onClick={() => { setMenuOpen(false); setFeedback(true); }}
@@ -2185,13 +2183,18 @@ function CatalogIcon({ size = 40 }) {
 function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
   const [openId, setOpenId] = useState(undefined);
   const [draft, setDraft] = useState({ text:"", color:"none", sid:"" });
+  const [selOpen, setSelOpen] = useState(false);
   const pressTimer = useRef(null);
 
   const doneSessions = (sessions || []).filter(s => s.status === "done");
+  function sessionLabel(sid) {
+    const sn = doneSessions.find(x => String(x.id) === String(sid));
+    return sn ? ((sn.substance || "Сессия") + " · " + (sn.date || "")) : "Без привязки";
+  }
 
   function openNew() { setDraft({ text:"", color:"none", sid:"" }); setOpenId(null); }
   function openEdit(t) { setDraft({ text:t.text, color:t.color || "none", sid:t.sid || "" }); setOpenId(t.id); }
-  function closeModal() { setOpenId(undefined); }
+  function closeModal() { setOpenId(undefined); setSelOpen(false); }
 
   function save() {
     const text = draft.text.trim();
@@ -2260,33 +2263,56 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
               <span style={{ flex:1 }}>{openId === null ? "Новая мысль" : "Мысль"}</span>
               <button className="tl-btn" onClick={closeModal} aria-label="Закрыть" style={{ width:20, height:18, fontSize:12, padding:0, lineHeight:1 }}>✕</button>
             </div>
-            <div style={{ fontSize:11, color:"#333", margin:"6px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>🎤 можно диктовать через микрофон на клавиатуре</div>
-            <div style={{ padding:"0 5px" }}>
+            <div style={{ padding:"6px 5px 0" }}>
               <textarea value={draft.text} onChange={e => setDraft({ ...draft, text:e.target.value })}
-                placeholder="Запиши мысль, которая пришла уже потом"
-                style={{ minHeight:88, fontFamily:"'Montserrat', sans-serif" }} />
+                placeholder="🎤 можно диктовать через микрофон на клавиатуре"
+                style={{ minHeight:96, fontSize:11, fontFamily:"'Montserrat', sans-serif" }} />
             </div>
             <div style={{ fontSize:11, color:T.ink, fontWeight:700, margin:"10px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>Привязать к сессии:</div>
-            <div style={{ padding:"0 5px" }}>
-              <select value={draft.sid} onChange={e => setDraft({ ...draft, sid:e.target.value })}
-                style={{ fontFamily:"'Montserrat', sans-serif" }}>
-                <option value="">Без привязки</option>
-                {doneSessions.map(sn => (
-                  <option key={sn.id} value={sn.id}>{(sn.substance || "Сессия") + " · " + (sn.date || "")}</option>
-                ))}
-              </select>
+            <div style={{ padding:"0 5px", position:"relative" }}>
+              <div onClick={() => setSelOpen(o => !o)}
+                style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                  background:"#fff", boxShadow:"var(--sunken)", padding:"7px 4px 7px 8px",
+                  fontSize:12, cursor:"pointer", minHeight:32, fontFamily:"'Montserrat', sans-serif" }}>
+                <span style={{ overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis", color:"#000" }}>
+                  {draft.sid ? sessionLabel(draft.sid) : "Без привязки"}
+                </span>
+                <span style={{ flex:"0 0 auto", marginLeft:6, width:20, height:20,
+                  background:"var(--surface)", boxShadow: selOpen ? "var(--sunken)" : "var(--raised)",
+                  display:"flex", alignItems:"center", justifyContent:"center", fontSize:9 }}>▼</span>
+              </div>
+              {selOpen && (
+                <>
+                  <div onClick={() => setSelOpen(false)} style={{ position:"fixed", inset:0, zIndex:3100 }} />
+                  <div style={{ position:"absolute", top:"calc(100% + 2px)", left:5, right:5, zIndex:3101,
+                    background:"#fff", border:"2px solid #000080", boxShadow:"3px 3px 8px rgba(0,0,0,0.45)",
+                    maxHeight:200, overflowY:"auto" }}>
+                    {[{ id:"", label:"Без привязки" }].concat(doneSessions.map(sn => ({ id:String(sn.id), label:(sn.substance || "Сессия") + " · " + (sn.date || "") }))).map(opt => {
+                      const sel = String(draft.sid) === opt.id;
+                      return (
+                        <div key={opt.id || "none"} onClick={() => { setDraft(d => ({ ...d, sid:opt.id })); setSelOpen(false); }}
+                          style={{ padding:"8px 10px", fontSize:12, cursor:"pointer", lineHeight:1.4,
+                            background: sel ? "#000080" : "#fff", color: sel ? "#fff" : "#000",
+                            fontFamily:"'Montserrat', sans-serif" }}>
+                          {opt.label}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
             <div style={{ fontSize:11, color:"#333", margin:"5px 5px 0", lineHeight:1.5, fontFamily:"'Montserrat', sans-serif" }}>
               Привяжи мысль к сессии — сейчас или позже. Тогда она подтянется к разбору этого опыта. Мысль без привязки останется просто в шкафчике.
             </div>
             <div style={{ fontSize:11, color:T.ink, fontWeight:700, margin:"10px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>Цвет плитки:</div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, padding:"0 5px" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:5, padding:"0 5px" }}>
               {LOCKER_ORDER.map(k => (
                 <button key={k} className={"tl-swb" + (draft.color === k ? " on" : "")} onClick={() => setDraft({ ...draft, color:k })}
-                  aria-label={k} style={{ height:26, background:LOCKER_COLORS[k].bg, border:"none" }} />
+                  aria-label={k} style={{ width:"100%", height:26, boxSizing:"border-box", background:LOCKER_COLORS[k].bg, border:"none" }} />
               ))}
               <button className={"tl-swb" + (draft.color === "none" ? " on" : "")} onClick={() => setDraft({ ...draft, color:"none" })}
-                aria-label="без цвета" style={{ height:26, fontSize:10, color:"#000", border:"none",
+                aria-label="без цвета" style={{ width:"100%", height:26, boxSizing:"border-box", fontSize:10, color:"#000", border:"none",
                   display:"flex", alignItems:"center", justifyContent:"center",
                   background:"repeating-linear-gradient(45deg,#fff,#fff 3px,#ddd 3px,#ddd 6px)" }}>нет</button>
             </div>
@@ -2560,7 +2586,7 @@ function FirstLaunch({ onAccept }) {
 }
 
 // ── Journal list ──────────────────────────────────────────────────────────────
-function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy }) {
+function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy, onLocker }) {
   return (
     <Screen>
       <div style={{ marginBottom:24 }}>
@@ -2570,15 +2596,18 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, 
           fontFamily:"'Montserrat', sans-serif" }}>
           Интеграция психоделического опыта
         </div>
-        {sessions.length > 0 && (
-          <div style={{ display:"flex", justifyContent:"flex-end", marginTop:12 }}>
-            <button onClick={onNew} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000080", border:"none",
-              padding:"9px 16px", fontFamily:"'Montserrat', sans-serif",
-              fontWeight:700, fontSize:14, cursor:"pointer" }}>
-              + Сессия
-            </button>
-          </div>
-        )}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"stretch", gap:10, marginTop:12 }}>
+          <button onClick={onLocker} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000080", border:"none",
+            padding:"9px 16px", fontFamily:"'Montserrat', sans-serif",
+            fontWeight:700, fontSize:14, cursor:"pointer" }}>
+            Шкафчик мыслей
+          </button>
+          <button onClick={onNew} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000080", border:"none",
+            padding:"9px 16px", fontFamily:"'Montserrat', sans-serif",
+            fontWeight:700, fontSize:14, cursor:"pointer" }}>
+            + Сессия
+          </button>
+        </div>
       </div>
 
       {sessions.length === 0 ? (
@@ -4581,6 +4610,7 @@ ${facetTexts}
       {tab === "journal" && journalView === "list" && (
         <JournalList sessions={sessions} isPremium={isPremium}
           onNew={startNew}
+          onLocker={() => setJournalView("locker")}
           onOpen={s => { setActiveSession(s); setJournalView("detail"); }}
           onResume={resumeDraft}
           onUpgrade={() => setJournalView("upgrade")}
