@@ -80,6 +80,7 @@ const NOTE_PREFIX = "psy_note_";
 const INDEX_KEY = "psy_index";
 const PREMIUM_KEY = "psy_premium";
 const MUSIC_KEY = "psy_music";
+const LOCKER_KEY = "psy_locker";
 
 function tgCloud() {
   return (typeof window !== "undefined" && window.Telegram?.WebApp?.CloudStorage) || null;
@@ -729,7 +730,7 @@ const NAV = [
   )},
 ];
 
-function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic }) {
+function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [about, setAbout] = useState(false);
   const [feedback, setFeedback] = useState(false);
@@ -778,6 +779,10 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic }) {
                 <div style={{ height:2, background:"#808080", borderBottom:"1px solid #fff", margin:"3px 2px" }} />
                 <div onClick={() => { setMenuOpen(false); if (onMusic) onMusic(); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Музыка</div>
+                <div onClick={() => { setMenuOpen(false); if (onLocker) onLocker(); }}
+                  style={{ padding:"6px 10px", fontSize:13, cursor:"pointer", color:"#000", display:"flex", alignItems:"center", gap:8 }}>
+                  <CatalogIcon size={16} /> Шкафчик мыслей
+                </div>
                 <div onClick={() => { setMenuOpen(false); if (onPrivacy) onPrivacy(); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Конфиденциальность</div>
                 <div onClick={() => { setMenuOpen(false); setFeedback(true); }}
@@ -1822,7 +1827,7 @@ function TrackerPage({ sessions, isPremium, onUpgrade }) {
 // ── Journal: session detail (read) ────────────────────────────────────────────
 // ── Claude Analysis ───────────────────────────────────────────────────────────
 
-function buildPrompt(session) {
+function buildPrompt(session, lockerThoughts = []) {
   const facetLabels = { mind:"Разум", body:"Тело", spirit:"Дух", relations:"Отношения", nature:"Природа", lifestyle:"Образ жизни" };
   const modeLabels = {
     contemplate_express: "Созерцание ↔ Выражение",
@@ -1982,14 +1987,19 @@ ${facetLabels[k]}: ${v}`;
     });
   }
 
+  if (Array.isArray(lockerThoughts) && lockerThoughts.length) {
+    text += `\n\nМЫСЛИ, ПРИШЕДШИЕ ПОЗЖЕ (шкафчик мыслей):`;
+    lockerThoughts.forEach(t => { if (t && t.text) text += `\n— ${t.text}`; });
+  }
+
   return text;
 }
 
-async function runAnalysis(session) {
+async function runAnalysis(session, lockerThoughts = []) {
   const response = await fetch(`${API_BASE}/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: buildPrompt(session), initData: tgInitData() }),
+    body: JSON.stringify({ prompt: buildPrompt(session, lockerThoughts), initData: tgInitData() }),
   });
   if (!response.ok) throw new Error("API error");
   const data = await response.json();
@@ -2032,7 +2042,7 @@ function LongtermEditor({ session, onUpdateSession, isPremium, onUpgrade }) {
   );
 }
 
-function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis }) {
+function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [] }) {
   const [status, setStatus] = useState(session.analysis ? "done" : "idle");
 
   const hasEnoughData = session.intention_main || session.after_vivid ||
@@ -2041,7 +2051,8 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis }) {
   async function handleAnalyze() {
     setStatus("loading");
     try {
-      const text = await runAnalysis(session);
+      const bound = (locker || []).filter(t => String(t.sid) === String(session.id));
+      const text = await runAnalysis(session, bound);
       onSaveAnalysis(text);
       setStatus("done");
     } catch (e) {
@@ -2159,14 +2170,27 @@ function LockerNote({ size = 22 }) {
   );
 }
 
-function ThoughtLocker({ session, onUpdateSession }) {
-  const list = session.locker || [];
+function CatalogIcon({ size = 40 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" style={{ flex:"none" }} aria-hidden="true">
+      <rect x="12" y="3" width="16" height="5" fill="#fff" stroke="#000" />
+      <rect x="9" y="7" width="22" height="6" fill="#ffd54a" stroke="#000" />
+      <rect x="5.5" y="12.5" width="29" height="22" fill="#cfcfcf" stroke="#000" />
+      <line x1="5.5" y1="19" x2="34.5" y2="19" stroke="#808080" />
+      <rect x="16" y="24" width="8" height="4" fill="#808080" stroke="#000" />
+    </svg>
+  );
+}
+
+function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
   const [openId, setOpenId] = useState(undefined);
-  const [draft, setDraft] = useState({ text:"", color:"none" });
+  const [draft, setDraft] = useState({ text:"", color:"none", sid:"" });
   const pressTimer = useRef(null);
 
-  function openNew() { setDraft({ text:"", color:"none" }); setOpenId(null); }
-  function openEdit(t) { setDraft({ text:t.text, color:t.color || "none" }); setOpenId(t.id); }
+  const doneSessions = (sessions || []).filter(s => s.status === "done");
+
+  function openNew() { setDraft({ text:"", color:"none", sid:"" }); setOpenId(null); }
+  function openEdit(t) { setDraft({ text:t.text, color:t.color || "none", sid:t.sid || "" }); setOpenId(t.id); }
   function closeModal() { setOpenId(undefined); }
 
   function save() {
@@ -2174,37 +2198,38 @@ function ThoughtLocker({ session, onUpdateSession }) {
     if (!text) { closeModal(); return; }
     let next;
     if (openId === null) {
-      next = [...list, { id: Math.random().toString(36).slice(2), text, color: draft.color, createdAt: Date.now() }];
+      next = [{ id: Math.random().toString(36).slice(2), text, color:draft.color, sid:draft.sid, createdAt: Date.now() }, ...thoughts];
     } else {
-      next = list.map(t => t.id === openId ? { ...t, text, color: draft.color } : t);
+      next = thoughts.map(t => t.id === openId ? { ...t, text, color:draft.color, sid:draft.sid } : t);
     }
-    onUpdateSession({ ...session, locker: next });
+    onSave(next);
     closeModal();
   }
-  function del() {
-    onUpdateSession({ ...session, locker: list.filter(t => t.id !== openId) });
-    closeModal();
-  }
+  function del() { onSave(thoughts.filter(t => t.id !== openId)); closeModal(); }
 
   return (
-    <div>
-      <div style={{ background:"var(--surface)", boxShadow:"var(--raised)", padding:3 }}>
+    <Screen>
+      <BackBtn onClick={onBack} />
+      <SectionTitle size={28}>ШКАФЧИК МЫСЛЕЙ</SectionTitle>
+      <Sub>Сюда можно докидывать короткие мысли, которые приходят уже после сессии, в разные дни. Всё хранится в твоём Telegram.</Sub>
+
+      <div style={{ background:"var(--surface)", boxShadow:"var(--raised)", padding:3, marginTop:16 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, background:"var(--titlebar)", color:"#fff",
           fontWeight:700, fontSize:12, padding:"3px 4px", fontFamily:"'Montserrat', sans-serif" }}>
-          <FolderIcon size={14} open />
+          <CatalogIcon size={15} />
           <span>Шкафчик мыслей</span>
         </div>
         <div style={{ padding:5 }}>
           <button className="tl-btn" onClick={openNew} style={{ fontFamily:"'Montserrat', sans-serif" }}>+ Новая мысль</button>
         </div>
         <div style={{ background:"#fff", boxShadow:"var(--sunken)", margin:"0 5px 5px", padding:10, minHeight:120 }}>
-          {list.length === 0 ? (
+          {thoughts.length === 0 ? (
             <div style={{ fontSize:12, color:T.muted, textAlign:"center", padding:"24px 8px", lineHeight:1.6, fontFamily:"'Montserrat', sans-serif" }}>
-              Пока пусто. Сюда можно докидывать короткие мысли, которые приходят уже после сессии, в разные дни.
+              Пока пусто. Добавь первую мысль кнопкой выше.
             </div>
           ) : (
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
-              {list.map(t => {
+              {thoughts.map(t => {
                 const c = LOCKER_COLORS[t.color] || LOCKER_COLORS.none;
                 return (
                   <div key={t.id} className="tl-tile"
@@ -2229,39 +2254,54 @@ function ThoughtLocker({ session, onUpdateSession }) {
       {openId !== undefined && (
         <div onClick={closeModal} style={{ position:"fixed", inset:0, zIndex:3000, background:"rgba(0,0,0,0.45)",
           display:"flex", alignItems:"center", justifyContent:"center", padding:12 }}>
-          <div onClick={e => e.stopPropagation()} style={{ width:300, maxWidth:"100%", background:"var(--surface)", boxShadow:"var(--raised)", padding:3 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:320, maxWidth:"100%", background:"var(--surface)", boxShadow:"var(--raised)", padding:3 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6, background:"var(--titlebar)", color:"#fff",
               fontWeight:700, fontSize:12, padding:"3px 4px", fontFamily:"'Montserrat', sans-serif" }}>
               <span style={{ flex:1 }}>{openId === null ? "Новая мысль" : "Мысль"}</span>
               <button className="tl-btn" onClick={closeModal} aria-label="Закрыть" style={{ width:20, height:18, fontSize:12, padding:0, lineHeight:1 }}>✕</button>
             </div>
-            <div style={{ padding:"6px 5px 0" }}>
+            <div style={{ fontSize:11, color:"#333", margin:"6px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>🎤 можно диктовать через микрофон на клавиатуре</div>
+            <div style={{ padding:"0 5px" }}>
               <textarea value={draft.text} onChange={e => setDraft({ ...draft, text:e.target.value })}
                 placeholder="Запиши мысль, которая пришла уже потом"
-                style={{ minHeight:96, fontFamily:"'Montserrat', sans-serif" }} />
+                style={{ minHeight:88, fontFamily:"'Montserrat', sans-serif" }} />
             </div>
-            <div style={{ fontSize:11, color:T.ink, margin:"8px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>Цвет плитки:</div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6, padding:"0 5px" }}>
+            <div style={{ fontSize:11, color:T.ink, fontWeight:700, margin:"10px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>Привязать к сессии:</div>
+            <div style={{ padding:"0 5px" }}>
+              <select value={draft.sid} onChange={e => setDraft({ ...draft, sid:e.target.value })}
+                style={{ fontFamily:"'Montserrat', sans-serif" }}>
+                <option value="">Без привязки</option>
+                {doneSessions.map(sn => (
+                  <option key={sn.id} value={sn.id}>{(sn.substance || "Сессия") + " · " + (sn.date || "")}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ fontSize:11, color:"#333", margin:"5px 5px 0", lineHeight:1.5, fontFamily:"'Montserrat', sans-serif" }}>
+              Привяжи мысль к сессии — сейчас или позже. Тогда она подтянется к разбору этого опыта. Мысль без привязки останется просто в шкафчике.
+            </div>
+            <div style={{ fontSize:11, color:T.ink, fontWeight:700, margin:"10px 5px 4px", fontFamily:"'Montserrat', sans-serif" }}>Цвет плитки:</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, padding:"0 5px" }}>
               {LOCKER_ORDER.map(k => (
                 <button key={k} className={"tl-swb" + (draft.color === k ? " on" : "")} onClick={() => setDraft({ ...draft, color:k })}
-                  aria-label={k} style={{ width:28, height:22, background:LOCKER_COLORS[k].bg, border:"none" }} />
+                  aria-label={k} style={{ height:26, background:LOCKER_COLORS[k].bg, border:"none" }} />
               ))}
               <button className={"tl-swb" + (draft.color === "none" ? " on" : "")} onClick={() => setDraft({ ...draft, color:"none" })}
-                aria-label="без цвета" style={{ width:34, height:22, fontSize:10, color:"#000", border:"none",
+                aria-label="без цвета" style={{ height:26, fontSize:10, color:"#000", border:"none",
+                  display:"flex", alignItems:"center", justifyContent:"center",
                   background:"repeating-linear-gradient(45deg,#fff,#fff 3px,#ddd 3px,#ddd 6px)" }}>нет</button>
             </div>
-            <div style={{ display:"flex", justifyContent:"space-between", padding:"10px 5px 5px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 5px 5px" }}>
               <button className="tl-btn" onClick={del} style={{ visibility: openId === null ? "hidden" : "visible", fontFamily:"'Montserrat', sans-serif" }}>Удалить</button>
               <button className="tl-btn" onClick={save} style={{ fontFamily:"'Montserrat', sans-serif" }}>Готово</button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </Screen>
   );
 }
 
-function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, onUpdateSession, onDelete }) {
+function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, onUpdateSession, onDelete, locker }) {
   const [tab, setTab] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -2289,13 +2329,12 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
             { id:"facets",   label:"Грани" },
             { id:"longterm", label:"Интеграция" },
             { id:"analysis", label:"Анализ", locked: !isPremium },
-            { id:"locker",   label:"Шкафчик", folder:true },
           ].map(docu => (
             <button key={docu.id} onClick={() => setTab(docu.id)}
               style={{ background:"none", border:"none", cursor:"pointer", padding:"8px 2px",
                 display:"flex", flexDirection:"column", alignItems:"center", gap:5 }}>
               <div style={{ position:"relative" }}>
-                {docu.folder ? <FolderIcon size={40} open /> : <DocIcon size={40} />}
+                <DocIcon size={40} />
                 {docu.locked && <div style={{ position:"absolute", bottom:8, right:0 }}><LockBadge size={18} /></div>}
               </div>
               <div style={{ fontSize:11, fontWeight:700, color:T.ink, whiteSpace:"nowrap" }}>{docu.label}</div>
@@ -2367,11 +2406,7 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
       )}
 
       {tab==="analysis" && (
-        <AnalysisTab session={session} isPremium={isPremium} onUpgrade={onUpgrade} onSaveAnalysis={onSaveAnalysis} />
-      )}
-
-      {tab==="locker" && (
-        <ThoughtLocker session={session} onUpdateSession={onUpdateSession} />
+        <AnalysisTab session={session} isPremium={isPremium} onUpgrade={onUpgrade} onSaveAnalysis={onSaveAnalysis} locker={locker} />
       )}
 
       {/* Delete button */}
@@ -4273,6 +4308,8 @@ export default function App() {
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [locker, setLocker] = useState([]);
+  function saveLocker(next) { setLocker(next); storeSet(LOCKER_KEY, JSON.stringify(next)); }
   const [trackerUpgrade, setTrackerUpgrade] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -4358,6 +4395,8 @@ export default function App() {
           // Сдвигаем счётчик id за максимальный сохранённый, чтобы не затирать старые сессии
           const maxId = arr.reduce((m, sn) => (typeof sn.id === "number" && sn.id > m ? sn.id : m), nextId);
           nextId = maxId;
+          const lockRaw = await storeGet(LOCKER_KEY);
+          if (lockRaw) { try { setLocker(JSON.parse(lockRaw) || []); } catch {} }
           const prem = await storeGet(PREMIUM_KEY);
           if (prem === "1") setIsPremium(true);
           // Сервер — источник истины: подтягиваем реальный статус премиума.
@@ -4548,7 +4587,7 @@ ${facetTexts}
           onPrivacy={() => setJournalView("privacy")} />
       )}
       {tab === "journal" && journalView === "detail" && activeSession && (
-        <SessionDetail session={activeSession} isPremium={isPremium}
+        <SessionDetail session={activeSession} isPremium={isPremium} locker={locker}
           onBack={() => setJournalView("list")}
           onUpgrade={() => setJournalView("upgrade")}
           onSaveAnalysis={(text) => setSessions(prev =>
@@ -4575,6 +4614,9 @@ ${facetTexts}
       )}
       {tab === "journal" && journalView === "music" && (
         <MusicPage onBack={() => setJournalView("list")} />
+      )}
+      {tab === "journal" && journalView === "locker" && (
+        <LockerScreen thoughts={locker} onSave={saveLocker} sessions={sessions} onBack={() => setJournalView("list")} />
       )}
       {tab === "journal" && journalView === "privacy" && (
         <PrivacyPage onBack={() => setJournalView("list")} onDeleteAll={handleDeleteAll} />
@@ -4604,7 +4646,7 @@ ${facetTexts}
       )}
       {tab === "tracker" && (!trackerUpgrade || isPremium) && <TrackerPage sessions={sessions} isPremium={isPremium} onUpgrade={() => setTrackerUpgrade(true)} />}
 
-      <NavBar active={tab} onMusic={() => { setTab("journal"); setJournalView("music"); }} onPrivacy={() => { setTab("journal"); setJournalView("privacy"); }} onChange={id => {
+      <NavBar active={tab} onLocker={() => { setTab("journal"); setJournalView("locker"); }} onMusic={() => { setTab("journal"); setJournalView("music"); }} onPrivacy={() => { setTab("journal"); setJournalView("privacy"); }} onChange={id => {
         setTab(id);
         if (id === "journal") {
           try {
