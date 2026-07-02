@@ -4472,7 +4472,7 @@ function SketchPad({ onClose }) {
   const undoStack = useRef([]);
   const redoStack = useRef([]);
 
-  const [tool, setTool] = useState("brush");
+  const [tool, setTool] = useState("pen");
   const [color, setColor] = useState("#000000");
   const [size, setSize] = useState(6);
   const [dirty, setDirty] = useState(false);
@@ -4604,6 +4604,13 @@ function SketchPad({ onClose }) {
       g.fillRect(Math.round(p.x + Math.cos(a) * rr), Math.round(p.y + Math.sin(a) * rr), dpr, dpr);
     }
   }
+  function dot(p, col) {
+    const g = ctx();
+    g.fillStyle = col;
+    g.beginPath();
+    g.arc(p.x, p.y, Math.max(0.5, size * dprRef.current / 2), 0, Math.PI * 2);
+    g.fill();
+  }
   function strokeTo(a, b, col) {
     const g = ctx();
     g.strokeStyle = col; g.lineWidth = size * dprRef.current; g.lineCap = "round"; g.lineJoin = "round";
@@ -4632,14 +4639,14 @@ function SketchPad({ onClose }) {
     } else if (tool === "spray") {
       spray(p);
     } else {
-      strokeTo(p, p, tool === "eraser" ? "#ffffff" : color);
+      dot(p, tool === "eraser" ? "#ffffff" : color);
     }
   }
   function move(e) {
     if (!drawing.current) return;
     e.preventDefault();
     const p = pos(e);
-    if (tool === "brush" || tool === "eraser") { strokeTo(last.current, p, tool === "eraser" ? "#ffffff" : color); last.current = p; }
+    if (tool === "pen" || tool === "brush" || tool === "eraser") { strokeTo(last.current, p, tool === "eraser" ? "#ffffff" : color); last.current = p; }
     else if (tool === "spray") { spray(p); }
     else if (tool === "line" || tool === "rect" || tool === "ellipse" || tool === "triangle") { ctx().putImageData(snap.current, 0, 0); drawShape(start.current, p); }
   }
@@ -4694,8 +4701,9 @@ function SketchPad({ onClose }) {
   function tryClose() { if (dirty) setConfirmClose(true); else onClose(); }
 
   const tools = [
-    { id: "brush", label: "Кисть" }, { id: "eraser", label: "Ластик" }, { id: "spray", label: "Баллончик" },
-    { id: "fill", label: "Заливка" }, { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" }, { id: "triangle", label: "Треугольник" },
+    { id: "pen", label: "Ручка" }, { id: "brush", label: "Кисть" }, { id: "spray", label: "Баллончик" },
+    { id: "fill", label: "Заливка" }, { id: "eraser", label: "Ластик" },
+    { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" }, { id: "triangle", label: "Треугольник" },
   ];
   const toolBtn = (active) => ({ width: 34, height: 34, minWidth: 34, maxWidth: 34, minHeight: 34, maxHeight: 34, flex: "none", flexShrink: 0, flexGrow: 0, padding: 0, lineHeight: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
     background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
@@ -4801,6 +4809,7 @@ function SketchPad({ onClose }) {
 
 function ToolIcon({ id }) {
   const p = { width: 18, height: 18, viewBox: "0 0 20 20", style: { display: "block", flex: "none", shapeRendering: "crispEdges" } };
+  if (id === "pen") return (<svg {...p}><rect x="10" y="2" width="5" height="8" fill="#2c5fbf" stroke="#000" transform="rotate(45 12.5 6)" /><rect x="7" y="9" width="4" height="4" fill="#ffd66e" stroke="#000" transform="rotate(45 9 11)" /><path d="M3 17 L6 14 L7.5 15.5 L4.5 18 Z" fill="#000" /></svg>);
   if (id === "brush") return (<svg {...p}><rect x="12" y="3" width="4" height="7" fill="#a0673a" stroke="#000" transform="rotate(45 14 6)" /><rect x="5" y="10" width="6" height="4" fill="#c0c0c0" stroke="#000" transform="rotate(45 8 12)" /><path d="M3 17 L6 14 L8 16 L5 19 Z" fill="#000" /></svg>);
   if (id === "eraser") return (<svg {...p}><rect x="3" y="9" width="10" height="6" fill="#f8c8d0" stroke="#000" transform="rotate(-28 8 12)" /><rect x="10" y="5" width="5" height="6" fill="#7ec0ee" stroke="#000" transform="rotate(-28 12 8)" /></svg>);
   if (id === "spray") return (<svg {...p}><rect x="7" y="7" width="6" height="10" fill="#b0b0b0" stroke="#000" /><rect x="8" y="3" width="4" height="4" fill="#808080" stroke="#000" /><circle cx="15" cy="3" r="0.8" fill="#000" /><circle cx="16" cy="6" r="0.8" fill="#000" /><circle cx="14" cy="6" r="0.8" fill="#000" /><circle cx="17" cy="4" r="0.7" fill="#000" /></svg>);
