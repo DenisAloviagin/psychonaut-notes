@@ -2,6 +2,7 @@ import os
 import hmac
 import hashlib
 import json
+import base64
 from urllib.parse import parse_qsl
 
 import httpx
@@ -217,6 +218,20 @@ async def tg_api(method: str, payload: dict) -> dict:
     return r.json()
 
 
+async def tg_send_photo_bytes(chat_id, png_bytes: bytes, caption: str = "") -> dict:
+    """Отправляет картинку пользователю как фото. Файл идёт транзитом, нигде не хранится."""
+    if not BOT_TOKEN:
+        raise HTTPException(status_code=500, detail="BOT_TOKEN not set")
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+    data = {"chat_id": str(chat_id)}
+    if caption:
+        data["caption"] = caption
+    files = {"photo": ("zarisovka.png", png_bytes, "image/png")}
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.post(url, data=data, files=files)
+    return r.json()
+
+
 # ── Запрос к Claude ─────────────────────────────────────────────────────────────
 async def ask_claude(prompt: str, max_tokens: int) -> str:
     if not CLAUDE_API_KEY:
@@ -257,6 +272,11 @@ class RefundRequest(BaseModel):
     chargeId: str = ""
 
 
+class SketchRequest(BaseModel):
+    initData: str = ""
+    image: str = ""  # PNG в base64 (можно с префиксом data:image/png;base64,)
+
+
 # ── Базовые эндпоинты ────────────────────────────────────────────────────────────
 @app.get("/")
 def health():
@@ -291,6 +311,32 @@ async def ratings(req: AnalyzeRequest):
     except Exception:
         parsed = {}
     return {"ratings": parsed}
+
+
+# ── Зарисовка: отправляем картинку пользователю в личку от бота ──────────────────
+@app.post("/send-sketch")
+async def send_sketch(req: SketchRequest):
+    user_id = require_tester(req.initData)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="No user id")
+    raw = req.image or ""
+    if raw.startswith("data:") and "," in raw:
+        raw = raw.split(",", 1)[1]
+    try:
+        png = base64.b64decode(raw)
+    except Exception:
+        raise HTTPException(status_code=400, detail="bad image")
+    if not png:
+        raise HTTPException(status_code=400, detail="empty image")
+    if len(png) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="image too large")
+    result = await tg_send_photo_bytes(
+        user_id, png, caption="Твоя зарисовка · Заметки психонавта"
+    )
+    if not result.get("ok"):
+        print(f"send-sketch error: {result}")
+        raise HTTPException(status_code=502, detail="send failed")
+    return {"ok": True}
 
 
 # ── Оплата ───────────────────────────────────────────────────────────────────────
