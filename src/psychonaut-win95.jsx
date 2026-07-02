@@ -4676,7 +4676,7 @@ function SketchPad({ onClose }) {
     { id: "brush", label: "Кисть" }, { id: "eraser", label: "Ластик" }, { id: "spray", label: "Баллончик" },
     { id: "fill", label: "Заливка" }, { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" }, { id: "triangle", label: "Треугольник" },
   ];
-  const toolBtn = (active) => ({ width: 30, height: 30, flex: "none", padding: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+  const toolBtn = (active) => ({ width: 28, height: 28, flex: "none", padding: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
     background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
     boxShadow: active ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" });
   const actBtn = { WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer",
@@ -4697,9 +4697,9 @@ function SketchPad({ onClose }) {
           boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>✕</button>
       </div>
 
-      <div style={{ display: "flex", gap: 3, padding: 3, flex: 1, minHeight: 0 }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flex: "none",
-          background: "#c0c0c0", padding: 3, boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
+      <div style={{ display: "flex", gap: 2, padding: 3, flex: 1, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flex: "none",
+          background: "#c0c0c0", padding: 2, boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
           {tools.map(t => (
             <button key={t.id} title={t.label} onClick={() => setTool(t.id)} style={toolBtn(tool === t.id)}>
               <ToolIcon id={t.id} />
@@ -4718,27 +4718,26 @@ function SketchPad({ onClose }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 6px", margin: "0 3px 0 42px",
-        background: "#c0c0c0", boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
-        <span style={{ fontSize: 12, color: "#000", fontFamily: "'Montserrat', sans-serif" }}>Толщина:</span>
-        {[3, 6, 12].map(s => (
-          <button key={s} onClick={() => setSize(s)} style={{ WebkitAppearance: "none", appearance: "none", borderRadius: 0,
-            width: 30, height: 30, flex: "none", padding: 0, boxSizing: "border-box", background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: size === s ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>
-            <span style={{ width: s + 2, height: s + 2, borderRadius: "50%", background: "#000" }} />
-          </button>
-        ))}
-        <span style={{ marginLeft: "auto", width: 26, height: 20, background: color, flex: "none",
-          boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000" }} />
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(10, minmax(0, 1fr))", gap: 3, padding: 5, margin: "3px 3px 0",
-        background: "#c0c0c0", boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
-        {SKETCH_PALETTE.map(c => (
-          <button key={c} onClick={() => setColor(c)} style={{ WebkitAppearance: "none", appearance: "none", borderRadius: 0,
-            aspectRatio: "1", minWidth: 0, minHeight: 20, padding: 0, boxSizing: "border-box", border: "none", cursor: "pointer", background: c,
-            boxShadow: color === c ? "inset 0 0 0 2px #000, 0 0 0 1px #fff" : "inset -1px -1px #fff, inset 1px 1px #808080" }} />
-        ))}
+      <div style={{ margin: "3px 3px 0", padding: 5, background: "#c0c0c0", boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
+          {[3, 6, 12].map(sz => (
+            <button key={sz} onClick={() => setSize(sz)} style={{ WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+              width: 28, height: 28, flex: "none", padding: 0, boxSizing: "border-box", background: "#c0c0c0", border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: size === sz ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>
+              <span style={{ width: sz + 2, height: sz + 2, borderRadius: "50%", background: "#000" }} />
+            </button>
+          ))}
+          <span style={{ marginLeft: "auto", width: 40, height: 24, background: color, flex: "none",
+            boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000" }} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(10, minmax(0, 1fr))", gap: 3 }}>
+          {SKETCH_PALETTE.map(c => (
+            <button key={c} onClick={() => setColor(c)} style={{ WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+              aspectRatio: "1", minWidth: 0, minHeight: 20, padding: 0, boxSizing: "border-box", border: "none", cursor: "pointer", background: c,
+              boxShadow: color === c ? "inset 0 0 0 2px #000, 0 0 0 1px #fff" : "inset -1px -1px #fff, inset 1px 1px #808080" }} />
+          ))}
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 6, padding: 6 }}>
