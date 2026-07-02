@@ -4470,6 +4470,7 @@ function SketchPad({ onClose }) {
   const start = useRef(null);
   const snap = useRef(null);
   const undoStack = useRef([]);
+  const redoStack = useRef([]);
 
   const [tool, setTool] = useState("brush");
   const [color, setColor] = useState("#000000");
@@ -4477,6 +4478,7 @@ function SketchPad({ onClose }) {
   const [dirty, setDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [vh, setVh] = useState(null);
+  const [, setHist] = useState(0);
 
   useEffect(() => {
     const c = canvasRef.current, box = wrapRef.current;
@@ -4527,6 +4529,8 @@ function SketchPad({ onClose }) {
       const u = undoStack.current;
       u.push(canvasRef.current.toDataURL("image/png"));
       if (u.length > 12) u.shift();
+      redoStack.current = [];
+      setHist(h => h + 1);
     } catch (e) {}
   }
   function restore(url) {
@@ -4538,7 +4542,18 @@ function SketchPad({ onClose }) {
   function undo() {
     const u = undoStack.current;
     if (!u.length) return;
+    try { redoStack.current.push(canvasRef.current.toDataURL("image/png")); if (redoStack.current.length > 12) redoStack.current.shift(); } catch (e) {}
     restore(u.pop());
+    setDirty(true);
+    setHist(h => h + 1);
+  }
+  function redo() {
+    const r = redoStack.current;
+    if (!r.length) return;
+    try { undoStack.current.push(canvasRef.current.toDataURL("image/png")); if (undoStack.current.length > 12) undoStack.current.shift(); } catch (e) {}
+    restore(r.pop());
+    setDirty(true);
+    setHist(h => h + 1);
   }
   function clearAll() {
     pushUndo();
@@ -4676,7 +4691,7 @@ function SketchPad({ onClose }) {
     { id: "brush", label: "Кисть" }, { id: "eraser", label: "Ластик" }, { id: "spray", label: "Баллончик" },
     { id: "fill", label: "Заливка" }, { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" }, { id: "triangle", label: "Треугольник" },
   ];
-  const toolBtn = (active) => ({ width: 26, height: 26, minWidth: 26, maxWidth: 26, minHeight: 26, maxHeight: 26, flex: "none", flexShrink: 0, flexGrow: 0, padding: 0, lineHeight: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+  const toolBtn = (active) => ({ width: "100%", flex: "1 1 0", minHeight: 0, padding: 0, lineHeight: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
     background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
     boxShadow: active ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" });
   const actBtn = { WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer",
@@ -4698,15 +4713,17 @@ function SketchPad({ onClose }) {
       </div>
 
       <div style={{ display: "flex", gap: 2, padding: 3, flex: 1, minHeight: 0 }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flex: "none",
+        <div style={{ display: "flex", flexDirection: "column", gap: 1, flex: "none", width: 50,
           background: "#c0c0c0", padding: 1, boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
           {tools.map(t => (
             <button key={t.id} title={t.label} onClick={() => setTool(t.id)} style={toolBtn(tool === t.id)}>
               <ToolIcon id={t.id} />
             </button>
           ))}
-          <div style={{ flex: 1 }} />
-          <button title="Отмена" onClick={undo} style={toolBtn(false)}><ToolIcon id="undo" /></button>
+          <div style={{ flex: "none", height: 0, alignSelf: "stretch", margin: "3px 2px", borderTop: "1px solid #808080", borderBottom: "1px solid #ffffff" }} />
+          <button title="Отмена" onClick={undo} style={{ ...toolBtn(false), opacity: undoStack.current.length ? 1 : 0.35 }}><ToolIcon id="undo" /></button>
+          <button title="Вернуть" onClick={redo} style={{ ...toolBtn(false), opacity: redoStack.current.length ? 1 : 0.35 }}><ToolIcon id="redo" /></button>
+          <div style={{ flex: "none", height: 0, alignSelf: "stretch", margin: "3px 2px", borderTop: "1px solid #808080", borderBottom: "1px solid #ffffff" }} />
           <button title="Очистить" onClick={clearAll} style={toolBtn(false)}><ToolIcon id="clear" /></button>
         </div>
 
@@ -4767,6 +4784,7 @@ function ToolIcon({ id }) {
   if (id === "ellipse") return (<svg {...p}><ellipse cx="10" cy="10" rx="7" ry="6" fill="none" stroke="#000" strokeWidth="2" /></svg>);
   if (id === "triangle") return (<svg {...p}><polygon points="10,4 16,16 4,16" fill="none" stroke="#000" strokeWidth="2" /></svg>);
   if (id === "undo") return (<svg {...p}><path d="M6 6 H12 a4 4 0 1 1 0 8 H8" fill="none" stroke="#000" strokeWidth="2" /><polygon points="7,2 7,9 2,5.5" fill="#000" /></svg>);
+  if (id === "redo") return (<svg {...p}><path d="M14 6 H8 a4 4 0 1 0 0 8 H12" fill="none" stroke="#000" strokeWidth="2" /><polygon points="13,2 13,9 18,5.5" fill="#000" /></svg>);
   if (id === "clear") return (<svg {...p}><rect x="4" y="6" width="12" height="11" fill="#c0c0c0" stroke="#000" /><line x1="4" y1="6" x2="16" y2="6" stroke="#000" strokeWidth="2" /><rect x="8" y="3" width="4" height="3" fill="#c0c0c0" stroke="#000" /><line x1="8" y1="9" x2="8" y2="15" stroke="#808080" /><line x1="12" y1="9" x2="12" y2="15" stroke="#808080" /></svg>);
   return null;
 }
