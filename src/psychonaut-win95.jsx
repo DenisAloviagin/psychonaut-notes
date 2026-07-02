@@ -2546,8 +2546,10 @@ function PrivacyPage({ onBack, onDeleteAll }) {
   return (
     <Screen>
       <BackBtn onClick={onBack} />
-      <div style={{ fontSize:28, marginBottom:8 }}>🔒</div>
-      <SectionTitle size={22}>КОНФИДЕНЦИАЛЬНОСТЬ</SectionTitle>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+        <span style={{ fontSize:22, lineHeight:1, flex:"none" }}>🔒</span>
+        <SectionTitle size={22} style={{ marginBottom:0 }}>КОНФИДЕНЦИАЛЬНОСТЬ</SectionTitle>
+      </div>
       <div style={{ height:20 }} />
 
       <Card style={{ marginBottom:12 }}>
@@ -2659,21 +2661,20 @@ function FirstLaunch({ onAccept }) {
 function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy, onLocker }) {
   return (
     <Screen>
-      <div style={{ marginBottom:24 }}>
-        <div style={{ background:"#008080", boxShadow:"var(--sunken)", padding:"7px 12px",
-          fontSize:14, fontWeight:600, color:"#fff", letterSpacing:"0.03em", textTransform:"uppercase",
-          textAlign:"center", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
-          textShadow:"0 1px 0 rgba(0,0,0,0.35)",
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:16, fontWeight:800, color:"#000", textAlign:"center",
+          whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", letterSpacing:"0.2px",
           fontFamily:"'Montserrat', sans-serif" }}>
           Интеграция психоделического опыта
         </div>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"stretch", gap:10, marginTop:12 }}>
-          <button onClick={onLocker} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000080", border:"none",
+        <div style={{ height:0, borderTop:"1px solid #808080", borderBottom:"1px solid #ffffff", margin:"12px 0 14px" }} />
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"stretch", gap:10 }}>
+          <button onClick={onLocker} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000", border:"none",
             padding:"9px 16px", fontFamily:"'Montserrat', sans-serif",
             fontWeight:700, fontSize:14, cursor:"pointer" }}>
             Черновики
           </button>
-          <button onClick={onNew} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000080", border:"none",
+          <button onClick={onNew} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000", border:"none",
             padding:"9px 16px", fontFamily:"'Montserrat', sans-serif",
             fontWeight:700, fontSize:14, cursor:"pointer" }}>
             + Сессия
@@ -2681,40 +2682,36 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, 
         </div>
       </div>
 
-      {sessions.length === 0 ? (
-        <div style={{ textAlign:"center", paddingTop:60 }}>
-          <div style={{ fontSize:52, marginBottom:16, opacity:0.3 }}>◎</div>
-          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:22, letterSpacing:"0.08em", color:T.ink, marginBottom:8 }}>
-            ЕЩЁ НЕТ ЗАПИСЕЙ
+      <div style={{ background:"#ffffe1", boxShadow:"var(--sunken)", padding:14 }}>
+        {sessions.length === 0 ? (
+          <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
+            <FolderIcon size={34} />
+            <div style={{ fontSize:13, color:"#3a3a1e", lineHeight:1.5, fontFamily:"'Montserrat', sans-serif" }}>
+              <b style={{ color:"#000" }}>Здесь будут твои сессии.</b><br />
+              Пока пусто. Создай первую кнопкой «+ Сессия», и она появится тут как папка.
+            </div>
           </div>
-          <div style={{ color:T.mid, fontSize:13, maxWidth:260, margin:"0 auto 28px", lineHeight:1.6, fontFamily:"'Montserrat', sans-serif" }}>
-            Один трип может изменить всё. Интеграция это то что делает это изменение реальным.
+        ) : (
+          <div>
+            {sessions.map((s, i) => (
+              <button key={s.id} onClick={() => s.status === "draft" ? onResume(s) : onOpen(s)}
+                style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 4px",
+                  background:"none", border:"none", borderTop: i > 0 ? "1px solid #d8d5a0" : "none",
+                  cursor:"pointer", textAlign:"left" }}>
+                <FolderIcon size={26} />
+                <span style={{ fontSize:14, fontWeight:600, color: s.status === "draft" ? "#555" : "#000",
+                  fontFamily:"'Montserrat', sans-serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                  {s.substance || "Сессия"}{s.status === "draft" ? " · не завершена" : ""}
+                </span>
+                <span style={{ marginLeft:"auto", fontSize:11, color:"#6b6b45", flex:"none", paddingLeft:8,
+                  fontFamily:"'Montserrat', sans-serif" }}>
+                  {s.status === "draft" ? "" : s.date}
+                </span>
+              </button>
+            ))}
           </div>
-          <Btn onClick={onNew} style={{ maxWidth:220, margin:"0 auto" }}>Начать первую сессию</Btn>
-        </div>
-      ) : (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:4, padding:"4px 0" }}>
-          {sessions.map(s => (
-            <button key={s.id} onClick={() => s.status === "draft" ? onResume(s) : onOpen(s)}
-              style={{ position:"relative", background:"none", border:"none", cursor:"pointer", padding:"7px 2px",
-                display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-              {s.status === "draft" && (
-                <span style={{ position:"absolute", top:2, right:"16%", width:7, height:7,
-                  background:T.accent, boxShadow:"0 0 0 1px #000" }} />
-              )}
-              <FolderIcon size={40} />
-              <div style={{ fontSize:11, fontWeight:700, color:T.ink, maxWidth:80, textAlign:"center",
-                whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                {s.substance || "Сессия"}
-              </div>
-              <div style={{ fontSize:9, textAlign:"center", fontWeight: s.status==="draft" ? 700 : 400,
-                color: s.status==="draft" ? T.accent : T.muted, fontFamily:"'Montserrat', sans-serif" }}>
-                {s.status==="draft" ? "не завершена" : s.date}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+        )}
+      </div>
 
       {!isPremium && sessions.length >= 1 && (
         <div style={{ background:"var(--surface)", boxShadow:"var(--sunken)", padding:18, marginTop:20, textAlign:"center" }}>
