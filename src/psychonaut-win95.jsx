@@ -4490,6 +4490,20 @@ function SketchPad({ onClose }) {
     ctx.fillRect(0, 0, c.width, c.height);
   }, []);
 
+  useEffect(() => {
+    let tg = null;
+    try { tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null; } catch (e) {}
+    try { if (tg && tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
+    try { if (tg && tg.lockOrientation) tg.lockOrientation(); } catch (e) {}
+    const prev = document.body.style.overscrollBehavior;
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      try { if (tg && tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {}
+      try { if (tg && tg.unlockOrientation) tg.unlockOrientation(); } catch (e) {}
+      document.body.style.overscrollBehavior = prev;
+    };
+  }, []);
+
   function ctx() { return canvasRef.current.getContext("2d"); }
   function pos(e) {
     const c = canvasRef.current, r = c.getBoundingClientRect();
@@ -4573,6 +4587,7 @@ function SketchPad({ onClose }) {
     if (tool === "line") { g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); }
     else if (tool === "rect") { g.rect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y)); }
     else if (tool === "ellipse") { g.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, Math.PI * 2); }
+    else if (tool === "triangle") { const x1 = Math.min(a.x, b.x), x2 = Math.max(a.x, b.x), y1 = Math.min(a.y, b.y), y2 = Math.max(a.y, b.y); g.moveTo((x1 + x2) / 2, y1); g.lineTo(x2, y2); g.lineTo(x1, y2); g.closePath(); }
     g.stroke();
   }
 
@@ -4583,7 +4598,7 @@ function SketchPad({ onClose }) {
     setDirty(true);
     if (tool === "fill") { floodFill(p.x, p.y, color); return; }
     drawing.current = true; start.current = p; last.current = p;
-    if (tool === "line" || tool === "rect" || tool === "ellipse") {
+    if (tool === "line" || tool === "rect" || tool === "ellipse" || tool === "triangle") {
       snap.current = ctx().getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
     } else if (tool === "spray") {
       spray(p);
@@ -4597,7 +4612,7 @@ function SketchPad({ onClose }) {
     const p = pos(e);
     if (tool === "brush" || tool === "eraser") { strokeTo(last.current, p, tool === "eraser" ? "#ffffff" : color); last.current = p; }
     else if (tool === "spray") { spray(p); }
-    else if (tool === "line" || tool === "rect" || tool === "ellipse") { ctx().putImageData(snap.current, 0, 0); drawShape(start.current, p); }
+    else if (tool === "line" || tool === "rect" || tool === "ellipse" || tool === "triangle") { ctx().putImageData(snap.current, 0, 0); drawShape(start.current, p); }
   }
   function up() { drawing.current = false; last.current = null; snap.current = null; }
 
@@ -4608,17 +4623,24 @@ function SketchPad({ onClose }) {
     out.width = c.width; out.height = c.height + band;
     const o = out.getContext("2d");
     o.fillStyle = "#ffffff"; o.fillRect(0, 0, out.width, out.height);
-    o.drawImage(c, 0, 0);
-    o.strokeStyle = "#808080"; o.lineWidth = dpr;
-    o.beginPath(); o.moveTo(0, c.height + dpr / 2); o.lineTo(out.width, c.height + dpr / 2); o.stroke();
-    const pad = Math.round(14 * dpr), m = Math.round(18 * dpr);
-    o.fillStyle = "#008080"; o.fillRect(pad, c.height + (band - m) / 2, m, m);
-    o.fillStyle = "#111"; o.textBaseline = "middle";
-    o.font = "700 " + Math.round(15 * dpr) + "px Tahoma, sans-serif";
-    o.fillText("Заметки психонавта", pad + m + Math.round(9 * dpr), c.height + band / 2);
-    const tw = o.measureText("Заметки психонавта").width;
-    o.fillStyle = "#555"; o.font = Math.round(13 * dpr) + "px Tahoma, sans-serif";
-    o.fillText(sketchStamp(), pad + m + Math.round(9 * dpr) + tw + Math.round(10 * dpr), c.height + band / 2 + Math.round(1 * dpr));
+    o.drawImage(c, 0, band);
+    const grad = o.createLinearGradient(0, 0, out.width, 0);
+    grad.addColorStop(0, "#000080"); grad.addColorStop(1, "#1084d0");
+    o.fillStyle = grad; o.fillRect(0, 0, out.width, band);
+    o.textBaseline = "middle";
+    const cy = band / 2, title = "Заметки психонавта", dt = sketchStamp();
+    const fsT = Math.round(16 * dpr), fsD = Math.round(13 * dpr), ic = Math.round(18 * dpr), gap = Math.round(8 * dpr);
+    o.font = "700 " + fsT + "px Tahoma, sans-serif"; const wT = o.measureText(title).width;
+    o.font = fsD + "px Tahoma, sans-serif"; const wD = o.measureText(dt).width;
+    let x = Math.round((out.width - (ic + gap + wT + gap + wD)) / 2);
+    o.fillStyle = "#c0c0c0"; o.fillRect(x, cy - ic / 2, ic, ic);
+    o.fillStyle = "#008080"; o.fillRect(x + Math.round(3 * dpr), cy - ic / 2 + Math.round(3 * dpr), ic - Math.round(6 * dpr), ic - Math.round(6 * dpr));
+    x += ic + gap;
+    o.textAlign = "left"; o.fillStyle = "#ffffff"; o.font = "700 " + fsT + "px Tahoma, sans-serif";
+    o.fillText(title, x, cy);
+    x += wT + gap;
+    o.fillStyle = "#cfe0f5"; o.font = fsD + "px Tahoma, sans-serif";
+    o.fillText(dt, x, cy + Math.round(1 * dpr));
     out.toBlob(async (blob) => {
       if (!blob) return;
       const file = new File([blob], "zarisovka.png", { type: "image/png" });
@@ -4638,7 +4660,7 @@ function SketchPad({ onClose }) {
 
   const tools = [
     { id: "brush", label: "Кисть" }, { id: "eraser", label: "Ластик" }, { id: "spray", label: "Баллончик" },
-    { id: "fill", label: "Заливка" }, { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" },
+    { id: "fill", label: "Заливка" }, { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" }, { id: "triangle", label: "Треугольник" },
   ];
   const toolBtn = (active) => ({ width: 34, height: 34, WebkitAppearance: "none", appearance: "none", borderRadius: 0,
     background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
@@ -4698,7 +4720,7 @@ function SketchPad({ onClose }) {
         background: "#c0c0c0", boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
         {SKETCH_PALETTE.map(c => (
           <button key={c} onClick={() => setColor(c)} style={{ WebkitAppearance: "none", appearance: "none", borderRadius: 0,
-            paddingTop: "100%", border: "none", cursor: "pointer", background: c,
+            aspectRatio: "1", border: "none", cursor: "pointer", background: c,
             boxShadow: color === c ? "inset 0 0 0 2px #000, 0 0 0 1px #fff" : "inset -1px -1px #fff, inset 1px 1px #808080" }} />
         ))}
       </div>
@@ -4728,6 +4750,7 @@ function ToolIcon({ id }) {
   if (id === "line") return (<svg {...p}><line x1="3" y1="17" x2="17" y2="3" stroke="#000" strokeWidth="2" /></svg>);
   if (id === "rect") return (<svg {...p}><rect x="3" y="6" width="14" height="9" fill="none" stroke="#000" strokeWidth="2" /></svg>);
   if (id === "ellipse") return (<svg {...p}><ellipse cx="10" cy="10" rx="7" ry="6" fill="none" stroke="#000" strokeWidth="2" /></svg>);
+  if (id === "triangle") return (<svg {...p}><polygon points="10,4 16,16 4,16" fill="none" stroke="#000" strokeWidth="2" /></svg>);
   if (id === "undo") return (<svg {...p}><path d="M6 6 H12 a4 4 0 1 1 0 8 H8" fill="none" stroke="#000" strokeWidth="2" /><polygon points="7,2 7,9 2,5.5" fill="#000" /></svg>);
   if (id === "clear") return (<svg {...p}><rect x="4" y="6" width="12" height="11" fill="#c0c0c0" stroke="#000" /><line x1="4" y1="6" x2="16" y2="6" stroke="#000" strokeWidth="2" /><rect x="8" y="3" width="4" height="3" fill="#c0c0c0" stroke="#000" /><line x1="8" y1="9" x2="8" y2="15" stroke="#808080" /><line x1="12" y1="9" x2="12" y2="15" stroke="#808080" /></svg>);
   return null;
