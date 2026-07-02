@@ -2242,7 +2242,7 @@ function HeadMusic() {
   );
 }
 
-function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
+function LockerScreen({ thoughts = [], onSave, sessions = [], onBack, onSketch }) {
   const [openId, setOpenId] = useState(undefined);
   const [draft, setDraft] = useState({ text:"", color:"none", sid:"" });
   const [selOpen, setSelOpen] = useState(false);
@@ -2290,8 +2290,9 @@ function LockerScreen({ thoughts = [], onSave, sessions = [], onBack }) {
           <StackIcon size={15} />
           <span>Черновики</span>
         </div>
-        <div style={{ padding:5 }}>
-          <button className="tl-btn" onClick={openNew} style={{ fontFamily:"'Montserrat', sans-serif" }}>+ Новый черновик</button>
+        <div style={{ padding:5, display:"flex", gap:5 }}>
+          <button className="tl-btn" onClick={openNew} style={{ flex:1, fontFamily:"'Montserrat', sans-serif" }}>+ Новый черновик</button>
+          <button className="tl-btn" onClick={onSketch} style={{ flex:1, fontFamily:"'Montserrat', sans-serif" }}>+ Зарисовка</button>
         </div>
         <div style={{ background:"#fff", boxShadow:"var(--sunken)", margin:"0 5px 5px", padding:10, minHeight:120 }}>
           {thoughts.length === 0 ? (
@@ -4228,6 +4229,8 @@ function MusicPage({ onBack }) {
   const [adding, setAdding] = useState(false);
   const [mtitle, setMtitle] = useState("");
   const [murl, setMurl] = useState("");
+  const [openMusic, setOpenMusic] = useState(null);
+  const musicRefs = useRef({});
 
   useEffect(() => {
     (async () => {
@@ -4237,6 +4240,18 @@ function MusicPage({ onBack }) {
       } catch {}
     })();
   }, []);
+
+  useEffect(() => {
+    if (!openMusic) return;
+    const el = musicRefs.current[openMusic];
+    if (!el) return;
+    requestAnimationFrame(() => {
+      try {
+        const y = el.getBoundingClientRect().top + window.scrollY - 56;
+        window.scrollTo({ top: y < 0 ? 0 : y, behavior: "smooth" });
+      } catch (e) {}
+    });
+  }, [openMusic]);
 
   function persist(next) {
     setItems(next);
@@ -4258,6 +4273,12 @@ function MusicPage({ onBack }) {
     fontFamily:"'Montserrat', sans-serif", color:"#000" };
   const ghostBtn = { background:"var(--surface)", boxShadow:"var(--raised)", border:"none", cursor:"pointer",
     padding:"0 14px", fontSize:13, fontWeight:700, color:T.muted, fontFamily:"'Montserrat', sans-serif" };
+  const secBtn = (open) => ({ width:"100%", WebkitAppearance:"none", appearance:"none", borderRadius:0,
+    background:"var(--surface)", boxShadow: open ? "var(--sunken)" : "var(--raised)", border:"none",
+    padding:"13px 34px", cursor:"pointer", position:"relative",
+    fontFamily:"'Montserrat', sans-serif", fontWeight:700, fontSize:13, color:T.ink,
+    textTransform:"uppercase", letterSpacing:"0.06em", textAlign:"center" });
+  const secArrow = { position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", fontSize:11, color:T.mid };
 
   return (
     <Screen>
@@ -4267,45 +4288,60 @@ function MusicPage({ onBack }) {
       </div>
       <Sub>Музыка ничего не весит: мы храним только ссылки, подборки открываются в твоём Spotify или другом приложении. Личные ссылки сохраняются в твоём Telegram.</Sub>
 
-      <div style={{ ...heading, margin:"18px 0 10px" }}>Подборка от приложения</div>
-      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-        {CURATED_MUSIC.map((m, i) => (
-          <Card key={i}>
-            <div style={{ fontWeight:700, fontSize:14, color:T.ink, marginBottom:4, fontFamily:"'Montserrat', sans-serif" }}>{m.title}</div>
-            <div style={{ fontSize:12, color:T.mid, lineHeight:1.6, marginBottom:10, fontFamily:"'Montserrat', sans-serif" }}>{m.note}</div>
-            <Btn onClick={() => openMusicLink(m.url)}>Слушать</Btn>
-          </Card>
-        ))}
+      <div ref={el => { if (el) musicRefs.current["curated"] = el; }}>
+        <button onClick={() => setOpenMusic(openMusic === "curated" ? null : "curated")} style={secBtn(openMusic === "curated")}>
+          Подборка от приложения
+          <span style={secArrow}>{openMusic === "curated" ? "▲" : "▼"}</span>
+        </button>
       </div>
-
-      <div style={{ ...heading, margin:"22px 0 10px" }}>Личная библиотека</div>
-      {items.length === 0 && !adding && (
-        <Sub>Здесь пусто. Добавь ссылку на свой плейлист или альбом, и он сохранится у тебя.</Sub>
+      {openMusic === "curated" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:10 }}>
+          {CURATED_MUSIC.map((m, i) => (
+            <Card key={i}>
+              <div style={{ fontWeight:700, fontSize:14, color:T.ink, marginBottom:4, fontFamily:"'Montserrat', sans-serif" }}>{m.title}</div>
+              <div style={{ fontSize:12, color:T.mid, lineHeight:1.6, marginBottom:10, fontFamily:"'Montserrat', sans-serif" }}>{m.note}</div>
+              <Btn onClick={() => openMusicLink(m.url)}>Слушать</Btn>
+            </Card>
+          ))}
+        </div>
       )}
-      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-        {items.map(m => (
-          <Card key={m.id}>
-            <div style={{ fontWeight:700, fontSize:14, color:T.ink, marginBottom:10, fontFamily:"'Montserrat', sans-serif", wordBreak:"break-word" }}>{m.title}</div>
-            <div style={{ display:"flex", gap:8 }}>
-              <div style={{ flex:1 }}><Btn onClick={() => openMusicLink(m.url)}>Слушать</Btn></div>
-              <button onClick={() => remove(m.id)} style={ghostBtn}>Убрать</button>
-            </div>
-          </Card>
-        ))}
-      </div>
 
-      {adding ? (
-        <Card style={{ marginTop:10 }}>
-          <input value={mtitle} onChange={e => setMtitle(e.target.value)} placeholder="Название (необязательно)" style={inputStyle} />
-          <input value={murl} onChange={e => setMurl(e.target.value)} placeholder="Ссылка (Spotify, YouTube...)" style={inputStyle} />
-          <div style={{ display:"flex", gap:8 }}>
-            <div style={{ flex:1 }}><Btn onClick={add} disabled={!murl.trim()}>Сохранить</Btn></div>
-            <button onClick={() => { setAdding(false); setMtitle(""); setMurl(""); }} style={ghostBtn}>Отмена</button>
+      <div ref={el => { if (el) musicRefs.current["library"] = el; }} style={{ marginTop:12 }}>
+        <button onClick={() => setOpenMusic(openMusic === "library" ? null : "library")} style={secBtn(openMusic === "library")}>
+          Личная библиотека
+          <span style={secArrow}>{openMusic === "library" ? "▲" : "▼"}</span>
+        </button>
+      </div>
+      {openMusic === "library" && (
+        <div style={{ marginTop:10 }}>
+          {items.length === 0 && !adding && (
+            <Sub>Здесь пусто. Добавь ссылку на свой плейлист или альбом, и он сохранится у тебя.</Sub>
+          )}
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {items.map(m => (
+              <Card key={m.id}>
+                <div style={{ fontWeight:700, fontSize:14, color:T.ink, marginBottom:10, fontFamily:"'Montserrat', sans-serif", wordBreak:"break-word" }}>{m.title}</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <div style={{ flex:1 }}><Btn onClick={() => openMusicLink(m.url)}>Слушать</Btn></div>
+                  <button onClick={() => remove(m.id)} style={ghostBtn}>Убрать</button>
+                </div>
+              </Card>
+            ))}
           </div>
-        </Card>
-      ) : (
-        <div style={{ marginTop:12 }}>
-          <Btn onClick={() => setAdding(true)}>+ Добавить свою музыку</Btn>
+          {adding ? (
+            <Card style={{ marginTop:10 }}>
+              <input value={mtitle} onChange={e => setMtitle(e.target.value)} placeholder="Название (необязательно)" style={inputStyle} />
+              <input value={murl} onChange={e => setMurl(e.target.value)} placeholder="Ссылка (Spotify, YouTube...)" style={inputStyle} />
+              <div style={{ display:"flex", gap:8 }}>
+                <div style={{ flex:1 }}><Btn onClick={add} disabled={!murl.trim()}>Сохранить</Btn></div>
+                <button onClick={() => { setAdding(false); setMtitle(""); setMurl(""); }} style={ghostBtn}>Отмена</button>
+              </div>
+            </Card>
+          ) : (
+            <div style={{ marginTop:12 }}>
+              <Btn onClick={() => setAdding(true)}>+ Добавить свою музыку</Btn>
+            </div>
+          )}
         </div>
       )}
     </Screen>
@@ -4415,6 +4451,289 @@ function ConsentScreen({ onDone }) {
   );
 }
 
+// ── SketchPad (зарисовка, рисование пальцем, сохранение только в телефон) ─────
+const SKETCH_PALETTE = ["#000000","#7f7f7f","#880015","#ed1c24","#ff7f27","#fff200","#22b14c","#00a2e8","#3f48cc","#a349a4",
+  "#ffffff","#c3c3c3","#b97a57","#ffaec9","#ffc90e","#e6e0a8","#b5e61d","#99d9ea","#7092be","#008080"];
+
+function sketchStamp() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  return p(d.getDate()) + "." + p(d.getMonth() + 1) + "." + d.getFullYear() + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+function SketchPad({ onClose }) {
+  const wrapRef = useRef(null);
+  const canvasRef = useRef(null);
+  const dprRef = useRef(1);
+  const drawing = useRef(false);
+  const last = useRef(null);
+  const start = useRef(null);
+  const snap = useRef(null);
+  const undoStack = useRef([]);
+
+  const [tool, setTool] = useState("brush");
+  const [color, setColor] = useState("#000000");
+  const [size, setSize] = useState(6);
+  const [dirty, setDirty] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  useEffect(() => {
+    const c = canvasRef.current, box = wrapRef.current;
+    if (!c || !box) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    dprRef.current = dpr;
+    const r = box.getBoundingClientRect();
+    c.width = Math.max(1, Math.round(r.width * dpr));
+    c.height = Math.max(1, Math.round(r.height * dpr));
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, c.width, c.height);
+  }, []);
+
+  function ctx() { return canvasRef.current.getContext("2d"); }
+  function pos(e) {
+    const c = canvasRef.current, r = c.getBoundingClientRect();
+    return { x: Math.round((e.clientX - r.left) * (c.width / r.width)), y: Math.round((e.clientY - r.top) * (c.height / r.height)) };
+  }
+  function pushUndo() {
+    try {
+      const u = undoStack.current;
+      u.push(canvasRef.current.toDataURL("image/png"));
+      if (u.length > 12) u.shift();
+    } catch (e) {}
+  }
+  function restore(url) {
+    const c = canvasRef.current, g = ctx();
+    const img = new Image();
+    img.onload = () => { g.clearRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height); };
+    img.src = url;
+  }
+  function undo() {
+    const u = undoStack.current;
+    if (!u.length) return;
+    restore(u.pop());
+  }
+  function clearAll() {
+    pushUndo();
+    const c = canvasRef.current, g = ctx();
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, c.width, c.height);
+    setDirty(true);
+  }
+
+  function hexRgb(h) {
+    const n = parseInt(h.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function floodFill(x, y, hex) {
+    const c = canvasRef.current, g = ctx();
+    const w = c.width, ht = c.height;
+    if (x < 0 || y < 0 || x >= w || y >= ht) return;
+    const img = g.getImageData(0, 0, w, ht), d = img.data;
+    const at = (px, py) => (py * w + px) * 4;
+    const s = at(x, y);
+    const tr = d[s], tg = d[s + 1], tb = d[s + 2], ta = d[s + 3];
+    const [fr, fg, fb] = hexRgb(hex);
+    if (Math.abs(tr - fr) + Math.abs(tg - fg) + Math.abs(tb - fb) < 8 && ta === 255) return;
+    const tol = 48;
+    const match = i => Math.abs(d[i] - tr) + Math.abs(d[i + 1] - tg) + Math.abs(d[i + 2] - tb) + Math.abs(d[i + 3] - ta) <= tol;
+    const stack = [[x, y]];
+    while (stack.length) {
+      const [cx, cy0] = stack.pop();
+      let cy = cy0;
+      while (cy >= 0 && match(at(cx, cy))) cy--;
+      cy++;
+      let left = false, right = false;
+      while (cy < ht && match(at(cx, cy))) {
+        const i = at(cx, cy);
+        d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; d[i + 3] = 255;
+        if (cx > 0) { if (match(at(cx - 1, cy))) { if (!left) { stack.push([cx - 1, cy]); left = true; } } else left = false; }
+        if (cx < w - 1) { if (match(at(cx + 1, cy))) { if (!right) { stack.push([cx + 1, cy]); right = true; } } else right = false; }
+        cy++;
+      }
+    }
+    g.putImageData(img, 0, 0);
+  }
+  function spray(p) {
+    const g = ctx(), dpr = dprRef.current, rad = size * dpr * 1.6, n = Math.round(size * 1.4) + 6;
+    g.fillStyle = color;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * rad;
+      g.fillRect(Math.round(p.x + Math.cos(a) * rr), Math.round(p.y + Math.sin(a) * rr), dpr, dpr);
+    }
+  }
+  function strokeTo(a, b, col) {
+    const g = ctx();
+    g.strokeStyle = col; g.lineWidth = size * dprRef.current; g.lineCap = "round"; g.lineJoin = "round";
+    g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+  }
+  function drawShape(a, b) {
+    const g = ctx();
+    g.strokeStyle = color; g.lineWidth = size * dprRef.current; g.lineCap = "round"; g.lineJoin = "round";
+    g.beginPath();
+    if (tool === "line") { g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); }
+    else if (tool === "rect") { g.rect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y)); }
+    else if (tool === "ellipse") { g.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, Math.PI * 2); }
+    g.stroke();
+  }
+
+  function down(e) {
+    e.preventDefault();
+    const p = pos(e);
+    pushUndo();
+    setDirty(true);
+    if (tool === "fill") { floodFill(p.x, p.y, color); return; }
+    drawing.current = true; start.current = p; last.current = p;
+    if (tool === "line" || tool === "rect" || tool === "ellipse") {
+      snap.current = ctx().getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
+    } else if (tool === "spray") {
+      spray(p);
+    } else {
+      strokeTo(p, p, tool === "eraser" ? "#ffffff" : color);
+    }
+  }
+  function move(e) {
+    if (!drawing.current) return;
+    e.preventDefault();
+    const p = pos(e);
+    if (tool === "brush" || tool === "eraser") { strokeTo(last.current, p, tool === "eraser" ? "#ffffff" : color); last.current = p; }
+    else if (tool === "spray") { spray(p); }
+    else if (tool === "line" || tool === "rect" || tool === "ellipse") { ctx().putImageData(snap.current, 0, 0); drawShape(start.current, p); }
+  }
+  function up() { drawing.current = false; last.current = null; snap.current = null; }
+
+  function save() {
+    const c = canvasRef.current, dpr = dprRef.current;
+    const band = Math.round(46 * dpr);
+    const out = document.createElement("canvas");
+    out.width = c.width; out.height = c.height + band;
+    const o = out.getContext("2d");
+    o.fillStyle = "#ffffff"; o.fillRect(0, 0, out.width, out.height);
+    o.drawImage(c, 0, 0);
+    o.strokeStyle = "#808080"; o.lineWidth = dpr;
+    o.beginPath(); o.moveTo(0, c.height + dpr / 2); o.lineTo(out.width, c.height + dpr / 2); o.stroke();
+    const pad = Math.round(14 * dpr), m = Math.round(18 * dpr);
+    o.fillStyle = "#008080"; o.fillRect(pad, c.height + (band - m) / 2, m, m);
+    o.fillStyle = "#111"; o.textBaseline = "middle";
+    o.font = "700 " + Math.round(15 * dpr) + "px Tahoma, sans-serif";
+    o.fillText("Заметки психонавта", pad + m + Math.round(9 * dpr), c.height + band / 2);
+    const tw = o.measureText("Заметки психонавта").width;
+    o.fillStyle = "#555"; o.font = Math.round(13 * dpr) + "px Tahoma, sans-serif";
+    o.fillText(sketchStamp(), pad + m + Math.round(9 * dpr) + tw + Math.round(10 * dpr), c.height + band / 2 + Math.round(1 * dpr));
+    out.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], "zarisovka.png", { type: "image/png" });
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+      } catch (e) {}
+      try {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = "zarisovka.png";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      } catch (e) {}
+    }, "image/png");
+  }
+
+  function tryClose() { if (dirty) setConfirmClose(true); else onClose(); }
+
+  const tools = [
+    { id: "brush", label: "Кисть" }, { id: "eraser", label: "Ластик" }, { id: "spray", label: "Баллончик" },
+    { id: "fill", label: "Заливка" }, { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" },
+  ];
+  const toolBtn = (active) => ({ width: 34, height: 34, WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+    background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+    boxShadow: active ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" });
+  const actBtn = { WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer",
+    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13, color: "#000", padding: "9px 8px", flex: 1,
+    boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "#c0c0c0", display: "flex", flexDirection: "column",
+      boxShadow: "inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff" }}>
+      <div style={{ background: "linear-gradient(90deg,#000080,#1084d0)", color: "#fff", fontWeight: 700, fontSize: 13,
+        padding: "5px 6px", display: "flex", alignItems: "center", gap: 6, fontFamily: "'Montserrat', sans-serif" }}>
+        <span style={{ width: 16, height: 14, background: "#c0c0c0", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff", flex: "none" }} />
+        <span>Зарисовка · Заметки психонавта</span>
+        <button onClick={tryClose} style={{ marginLeft: "auto", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+          width: 26, height: 22, background: "#c0c0c0", color: "#000", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer",
+          boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>✕</button>
+      </div>
+
+      <div style={{ display: "flex", gap: 3, padding: 3, flex: 1, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "none",
+          background: "#c0c0c0", padding: 3, boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
+          {tools.map(t => (
+            <button key={t.id} title={t.label} onClick={() => setTool(t.id)} style={toolBtn(tool === t.id)}>
+              <ToolIcon id={t.id} />
+            </button>
+          ))}
+          <div style={{ height: 4 }} />
+          <button title="Отмена" onClick={undo} style={toolBtn(false)}><ToolIcon id="undo" /></button>
+          <button title="Очистить" onClick={clearAll} style={toolBtn(false)}><ToolIcon id="clear" /></button>
+        </div>
+
+        <div ref={wrapRef} style={{ flex: 1, minWidth: 0, background: "#fff", position: "relative",
+          boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000" }}>
+          <canvas ref={canvasRef}
+            onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up} onPointerCancel={up}
+            style={{ width: "100%", height: "100%", display: "block", touchAction: "none" }} />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 6px", margin: "0 3px",
+        background: "#c0c0c0", boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
+        <span style={{ fontSize: 12, color: "#000", fontFamily: "'Montserrat', sans-serif" }}>Толщина:</span>
+        {[3, 6, 12].map(s => (
+          <button key={s} onClick={() => setSize(s)} style={{ WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+            width: 30, height: 26, background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: size === s ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>
+            <span style={{ width: s + 2, height: s + 2, borderRadius: "50%", background: "#000" }} />
+          </button>
+        ))}
+        <span style={{ marginLeft: "auto", width: 26, height: 20, background: color, flex: "none",
+          boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000" }} />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(10,1fr)", gap: 3, padding: 5, margin: "3px 3px 0",
+        background: "#c0c0c0", boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
+        {SKETCH_PALETTE.map(c => (
+          <button key={c} onClick={() => setColor(c)} style={{ WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+            paddingTop: "100%", border: "none", cursor: "pointer", background: c,
+            boxShadow: color === c ? "inset 0 0 0 2px #000, 0 0 0 1px #fff" : "inset -1px -1px #fff, inset 1px 1px #808080" }} />
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 6, padding: 6 }}>
+        <button onClick={save} style={actBtn}>Сохранить в телефон</button>
+        <button onClick={tryClose} style={actBtn}>Закрыть</button>
+      </div>
+
+      {confirmClose && (
+        <MessageBox title="Закрыть зарисовку"
+          message="Рисунок нигде не сохранён. Закрыть без сохранения?"
+          confirmLabel="Закрыть" cancelLabel="Остаться"
+          onConfirm={() => { setConfirmClose(false); onClose(); }}
+          onCancel={() => setConfirmClose(false)} />
+      )}
+    </div>
+  );
+}
+
+function ToolIcon({ id }) {
+  const p = { width: 20, height: 20, viewBox: "0 0 20 20", style: { display: "block", shapeRendering: "crispEdges" } };
+  if (id === "brush") return (<svg {...p}><rect x="12" y="3" width="4" height="7" fill="#a0673a" stroke="#000" transform="rotate(45 14 6)" /><rect x="5" y="10" width="6" height="4" fill="#c0c0c0" stroke="#000" transform="rotate(45 8 12)" /><path d="M3 17 L6 14 L8 16 L5 19 Z" fill="#000" /></svg>);
+  if (id === "eraser") return (<svg {...p}><rect x="3" y="9" width="10" height="6" fill="#f8c8d0" stroke="#000" transform="rotate(-28 8 12)" /><rect x="10" y="5" width="5" height="6" fill="#7ec0ee" stroke="#000" transform="rotate(-28 12 8)" /></svg>);
+  if (id === "spray") return (<svg {...p}><rect x="7" y="7" width="6" height="10" fill="#b0b0b0" stroke="#000" /><rect x="8" y="3" width="4" height="4" fill="#808080" stroke="#000" /><circle cx="15" cy="3" r="0.8" fill="#000" /><circle cx="16" cy="6" r="0.8" fill="#000" /><circle cx="14" cy="6" r="0.8" fill="#000" /><circle cx="17" cy="4" r="0.7" fill="#000" /></svg>);
+  if (id === "fill") return (<svg {...p}><polygon points="3,10 10,3 16,9 9,16" fill="#c0c0c0" stroke="#000" /><rect x="13" y="10" width="2" height="4" fill="#008080" /><path d="M14 14 q2 2 0 3.5" fill="#008080" /></svg>);
+  if (id === "line") return (<svg {...p}><line x1="3" y1="17" x2="17" y2="3" stroke="#000" strokeWidth="2" /></svg>);
+  if (id === "rect") return (<svg {...p}><rect x="3" y="6" width="14" height="9" fill="none" stroke="#000" strokeWidth="2" /></svg>);
+  if (id === "ellipse") return (<svg {...p}><ellipse cx="10" cy="10" rx="7" ry="6" fill="none" stroke="#000" strokeWidth="2" /></svg>);
+  if (id === "undo") return (<svg {...p}><path d="M6 6 H12 a4 4 0 1 1 0 8 H8" fill="none" stroke="#000" strokeWidth="2" /><polygon points="7,2 7,9 2,5.5" fill="#000" /></svg>);
+  if (id === "clear") return (<svg {...p}><rect x="4" y="6" width="12" height="11" fill="#c0c0c0" stroke="#000" /><line x1="4" y1="6" x2="16" y2="6" stroke="#000" strokeWidth="2" /><rect x="8" y="3" width="4" height="3" fill="#c0c0c0" stroke="#000" /><line x1="8" y1="9" x2="8" y2="15" stroke="#808080" /><line x1="12" y1="9" x2="12" y2="15" stroke="#808080" /></svg>);
+  return null;
+}
+
+
 export default function App() {
   const hasSavedFlow = (() => {
     try { const d = sessionStorage.getItem("flowData"); return d && d !== "{}"; } catch { return false; }
@@ -4426,6 +4745,7 @@ export default function App() {
   const [activeSession, setActiveSession] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
   const [locker, setLocker] = useState([]);
+  const [sketchOpen, setSketchOpen] = useState(false);
   function saveLocker(next) { setLocker(next); storeSet(LOCKER_KEY, JSON.stringify(next)); }
   const [trackerUpgrade, setTrackerUpgrade] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -4734,7 +5054,7 @@ ${facetTexts}
         <MusicPage onBack={() => setJournalView("list")} />
       )}
       {tab === "journal" && journalView === "locker" && (
-        <LockerScreen thoughts={locker} onSave={saveLocker} sessions={sessions} onBack={() => setJournalView("list")} />
+        <LockerScreen thoughts={locker} onSave={saveLocker} sessions={sessions} onBack={() => setJournalView("list")} onSketch={() => setSketchOpen(true)} />
       )}
       {tab === "journal" && journalView === "privacy" && (
         <PrivacyPage onBack={() => setJournalView("list")} onDeleteAll={handleDeleteAll} />
@@ -4777,6 +5097,8 @@ ${facetTexts}
           } catch { setJournalView("list"); }
         }
       }} />
+
+      {sketchOpen && <SketchPad onClose={() => setSketchOpen(false)} />}
 
       {/* First launch onboarding, поверх всего */}
       {showOnboarding && <FirstLaunch onAccept={() => setShowOnboarding(false)} />}
