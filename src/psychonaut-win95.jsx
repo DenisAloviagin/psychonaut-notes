@@ -4477,6 +4477,7 @@ function SketchPad({ onClose }) {
   const [size, setSize] = useState(6);
   const [dirty, setDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [saveUrl, setSaveUrl] = useState(null);
   const [vh, setVh] = useState(null);
   const [, setHist] = useState(0);
 
@@ -4675,15 +4676,7 @@ function SketchPad({ onClose }) {
     x += wT + gap;
     o.fillStyle = "#cfe0f5"; o.font = fsD + "px Tahoma, sans-serif";
     o.fillText(dt, x, cy + Math.round(1 * dpr));
-    out.toBlob((blob) => {
-      if (!blob) return;
-      try {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = "zarisovka-" + Date.now() + ".png";
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 8000);
-      } catch (e) {}
-    }, "image/png");
+    try { setSaveUrl(out.toDataURL("image/png")); } catch (e) {}
   }
 
   function tryClose() { if (dirty) setConfirmClose(true); else onClose(); }
@@ -4769,6 +4762,34 @@ function SketchPad({ onClose }) {
           confirmLabel="Закрыть" cancelLabel="Остаться"
           onConfirm={() => { setConfirmClose(false); onClose(); }}
           onCancel={() => setConfirmClose(false)} />
+      )}
+
+      {saveUrl && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ width: "100%", maxWidth: 360, maxHeight: "92%", background: "#c0c0c0", display: "flex", flexDirection: "column",
+            boxShadow: "inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff" }}>
+            <div style={{ background: "linear-gradient(90deg,#000080,#1084d0)", color: "#fff", fontWeight: 700, fontSize: 13,
+              padding: "4px 6px", margin: 2, display: "flex", alignItems: "center", gap: 6, fontFamily: "'Montserrat', sans-serif" }}>
+              <span style={{ width: 14, height: 12, background: "#c0c0c0", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff", flex: "none" }} />
+              <span>Сохранить рисунок</span>
+              <button onClick={() => setSaveUrl(null)} style={{ marginLeft: "auto", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+                width: 24, height: 20, background: "#c0c0c0", color: "#000", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer",
+                boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>✕</button>
+            </div>
+            <div style={{ padding: "8px 10px", overflow: "auto", minHeight: 0 }}>
+              <div style={{ fontSize: 12, color: "#000", lineHeight: 1.5, marginBottom: 8, fontFamily: "'Montserrat', sans-serif" }}>
+                Зажми рисунок пальцем и выбери «Сохранить фото». Он попадёт прямо в галерею телефона.
+              </div>
+              <img src={saveUrl} alt="Зарисовка" style={{ width: "100%", height: "auto", display: "block",
+                WebkitTouchCallout: "default", WebkitUserSelect: "auto", userSelect: "auto",
+                boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000" }} />
+            </div>
+            <div style={{ padding: 8 }}>
+              <button onClick={() => setSaveUrl(null)} style={{ ...actBtn, flex: "none", width: "100%" }}>Готово</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
