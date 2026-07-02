@@ -330,9 +330,7 @@ async def send_sketch(req: SketchRequest):
         raise HTTPException(status_code=400, detail="empty image")
     if len(png) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="image too large")
-    result = await tg_send_photo_bytes(
-        user_id, png, caption="Твоя зарисовка · Заметки психонавта"
-    )
+    result = await tg_send_photo_bytes(user_id, png)
     if not result.get("ok"):
         print(f"send-sketch error: {result}")
         raise HTTPException(status_code=502, detail="send failed")
