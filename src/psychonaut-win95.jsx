@@ -2411,8 +2411,11 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
   return (
     <Screen>
       <BackBtn onClick={() => tab ? setTab(null) : onBack()} />
-      <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:28, letterSpacing:"0.04em", color:T.ink }}>
-        {session.substance || "СЕССИЯ"}
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <FolderIcon size={34} open={true} />
+        <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:28, letterSpacing:"0.04em", color:T.ink }}>
+          {session.substance || "СЕССИЯ"}
+        </div>
       </div>
       <div style={{ fontSize:12, color:T.muted, marginBottom:16, fontFamily:"'Montserrat', sans-serif" }}>
         {session.date}{session.place ? ` · ${session.place}` : ""}
@@ -2661,6 +2664,7 @@ function FirstLaunch({ onAccept }) {
 function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy, onLocker }) {
   return (
     <Screen>
+      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px)" }}>
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:16, fontWeight:800, color:"#000", textAlign:"center",
           whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", letterSpacing:"0.2px",
@@ -2668,21 +2672,23 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, 
           Интеграция психоделического опыта
         </div>
         <div style={{ height:0, borderTop:"1px solid #808080", borderBottom:"1px solid #ffffff", margin:"12px 0 14px" }} />
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"stretch", gap:10 }}>
-          <button onClick={onLocker} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000", border:"none",
-            padding:"9px 16px", fontFamily:"'Montserrat', sans-serif",
+        <div style={{ display:"flex", gap:12 }}>
+          <button onClick={onLocker} style={{ flex:1, WebkitAppearance:"none", appearance:"none", borderRadius:0,
+            background:"var(--surface)", boxShadow:"var(--raised)", color:"#000", border:"none",
+            padding:"10px 12px", fontFamily:"'Montserrat', sans-serif",
             fontWeight:700, fontSize:14, cursor:"pointer" }}>
             Черновики
           </button>
-          <button onClick={onNew} style={{ background:"var(--surface)", boxShadow:"var(--raised)", color:"#000", border:"none",
-            padding:"9px 16px", fontFamily:"'Montserrat', sans-serif",
+          <button onClick={onNew} style={{ flex:1, WebkitAppearance:"none", appearance:"none", borderRadius:0,
+            background:"var(--surface)", boxShadow:"var(--raised)", color:"#000", border:"none",
+            padding:"10px 12px", fontFamily:"'Montserrat', sans-serif",
             fontWeight:700, fontSize:14, cursor:"pointer" }}>
             + Сессия
           </button>
         </div>
       </div>
 
-      <div style={{ background:"#ffffe1", boxShadow:"var(--sunken)", padding:14 }}>
+      <div style={{ background:"#ffffe1", boxShadow:"var(--sunken)", padding:14, flex:1 }}>
         {sessions.length === 0 ? (
           <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
             <FolderIcon size={34} />
@@ -2696,6 +2702,7 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, 
             {sessions.map((s, i) => (
               <button key={s.id} onClick={() => s.status === "draft" ? onResume(s) : onOpen(s)}
                 style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 4px",
+                  WebkitAppearance:"none", appearance:"none", borderRadius:0,
                   background:"none", border:"none", borderTop: i > 0 ? "1px solid #d8d5a0" : "none",
                   cursor:"pointer", textAlign:"left" }}>
                 <FolderIcon size={26} />
@@ -2724,6 +2731,7 @@ function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, 
           <Btn onClick={onUpgrade}>Открыть полный доступ</Btn>
         </div>
       )}
+      </div>
     </Screen>
   );
 }
