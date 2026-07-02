@@ -4676,7 +4676,7 @@ function SketchPad({ onClose }) {
     { id: "brush", label: "Кисть" }, { id: "eraser", label: "Ластик" }, { id: "spray", label: "Баллончик" },
     { id: "fill", label: "Заливка" }, { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" }, { id: "triangle", label: "Треугольник" },
   ];
-  const toolBtn = (active) => ({ width: 26, height: 26, flex: "none", padding: 0, minHeight: 0, lineHeight: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+  const toolBtn = (active) => ({ width: 26, height: 26, minWidth: 26, maxWidth: 26, minHeight: 26, maxHeight: 26, flex: "none", flexShrink: 0, flexGrow: 0, padding: 0, lineHeight: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
     background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
     boxShadow: active ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" });
   const actBtn = { WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer",
@@ -4757,7 +4757,7 @@ function SketchPad({ onClose }) {
 }
 
 function ToolIcon({ id }) {
-  const p = { width: 20, height: 20, viewBox: "0 0 20 20", style: { display: "block", shapeRendering: "crispEdges" } };
+  const p = { width: 18, height: 18, viewBox: "0 0 20 20", style: { display: "block", flex: "none", shapeRendering: "crispEdges" } };
   if (id === "brush") return (<svg {...p}><rect x="12" y="3" width="4" height="7" fill="#a0673a" stroke="#000" transform="rotate(45 14 6)" /><rect x="5" y="10" width="6" height="4" fill="#c0c0c0" stroke="#000" transform="rotate(45 8 12)" /><path d="M3 17 L6 14 L8 16 L5 19 Z" fill="#000" /></svg>);
   if (id === "eraser") return (<svg {...p}><rect x="3" y="9" width="10" height="6" fill="#f8c8d0" stroke="#000" transform="rotate(-28 8 12)" /><rect x="10" y="5" width="5" height="6" fill="#7ec0ee" stroke="#000" transform="rotate(-28 12 8)" /></svg>);
   if (id === "spray") return (<svg {...p}><rect x="7" y="7" width="6" height="10" fill="#b0b0b0" stroke="#000" /><rect x="8" y="3" width="4" height="4" fill="#808080" stroke="#000" /><circle cx="15" cy="3" r="0.8" fill="#000" /><circle cx="16" cy="6" r="0.8" fill="#000" /><circle cx="14" cy="6" r="0.8" fill="#000" /><circle cx="17" cy="4" r="0.7" fill="#000" /></svg>);
