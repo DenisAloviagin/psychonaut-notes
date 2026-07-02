@@ -4476,6 +4476,7 @@ function SketchPad({ onClose }) {
   const [size, setSize] = useState(6);
   const [dirty, setDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [vh, setVh] = useState(null);
 
   useEffect(() => {
     const c = canvasRef.current, box = wrapRef.current;
@@ -4495,11 +4496,23 @@ function SketchPad({ onClose }) {
     try { tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null; } catch (e) {}
     try { if (tg && tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
     try { if (tg && tg.lockOrientation) tg.lockOrientation(); } catch (e) {}
+    try { if (tg && tg.expand) tg.expand(); } catch (e) {}
+    const applyVh = () => {
+      try {
+        const h = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight : window.innerHeight;
+        if (h) setVh(h);
+      } catch (e) { try { setVh(window.innerHeight); } catch (e2) {} }
+    };
+    applyVh();
+    try { if (tg && tg.onEvent) tg.onEvent("viewportChanged", applyVh); } catch (e) {}
+    window.addEventListener("resize", applyVh);
     const prev = document.body.style.overscrollBehavior;
     document.body.style.overscrollBehavior = "none";
     return () => {
       try { if (tg && tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {}
       try { if (tg && tg.unlockOrientation) tg.unlockOrientation(); } catch (e) {}
+      try { if (tg && tg.offEvent) tg.offEvent("viewportChanged", applyVh); } catch (e) {}
+      window.removeEventListener("resize", applyVh);
       document.body.style.overscrollBehavior = prev;
     };
   }, []);
@@ -4663,7 +4676,7 @@ function SketchPad({ onClose }) {
     { id: "brush", label: "Кисть" }, { id: "eraser", label: "Ластик" }, { id: "spray", label: "Баллончик" },
     { id: "fill", label: "Заливка" }, { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" }, { id: "triangle", label: "Треугольник" },
   ];
-  const toolBtn = (active) => ({ width: 30, height: 30, flex: "none", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+  const toolBtn = (active) => ({ width: 30, height: 30, flex: "none", padding: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
     background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
     boxShadow: active ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" });
   const actBtn = { WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer",
@@ -4671,7 +4684,9 @@ function SketchPad({ onClose }) {
     boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "#c0c0c0", display: "flex", flexDirection: "column",
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: vh ? vh : "100%", maxHeight: "100%", overflow: "hidden",
+      paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)", boxSizing: "border-box",
+      zIndex: 10000, background: "#c0c0c0", display: "flex", flexDirection: "column",
       boxShadow: "inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff" }}>
       <div style={{ background: "linear-gradient(90deg,#000080,#1084d0)", color: "#fff", fontWeight: 700, fontSize: 13,
         padding: "5px 6px", display: "flex", alignItems: "center", gap: 6, fontFamily: "'Montserrat', sans-serif" }}>
@@ -4683,7 +4698,7 @@ function SketchPad({ onClose }) {
       </div>
 
       <div style={{ display: "flex", gap: 3, padding: 3, flex: 1, minHeight: 0 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "none",
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flex: "none",
           background: "#c0c0c0", padding: 3, boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
           {tools.map(t => (
             <button key={t.id} title={t.label} onClick={() => setTool(t.id)} style={toolBtn(tool === t.id)}>
@@ -4703,12 +4718,12 @@ function SketchPad({ onClose }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 6px", margin: "0 3px",
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 6px", margin: "0 3px 0 42px",
         background: "#c0c0c0", boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
         <span style={{ fontSize: 12, color: "#000", fontFamily: "'Montserrat', sans-serif" }}>Толщина:</span>
         {[3, 6, 12].map(s => (
           <button key={s} onClick={() => setSize(s)} style={{ WebkitAppearance: "none", appearance: "none", borderRadius: 0,
-            width: 30, height: 30, flex: "none", background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            width: 30, height: 30, flex: "none", padding: 0, boxSizing: "border-box", background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
             boxShadow: size === s ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>
             <span style={{ width: s + 2, height: s + 2, borderRadius: "50%", background: "#000" }} />
           </button>
@@ -4721,7 +4736,7 @@ function SketchPad({ onClose }) {
         background: "#c0c0c0", boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
         {SKETCH_PALETTE.map(c => (
           <button key={c} onClick={() => setColor(c)} style={{ WebkitAppearance: "none", appearance: "none", borderRadius: 0,
-            aspectRatio: "1", minWidth: 0, minHeight: 20, border: "none", cursor: "pointer", background: c,
+            aspectRatio: "1", minWidth: 0, minHeight: 20, padding: 0, boxSizing: "border-box", border: "none", cursor: "pointer", background: c,
             boxShadow: color === c ? "inset 0 0 0 2px #000, 0 0 0 1px #fff" : "inset -1px -1px #fff, inset 1px 1px #808080" }} />
         ))}
       </div>
