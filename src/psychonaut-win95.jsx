@@ -4647,7 +4647,7 @@ function SketchPad({ onClose }) {
   function save() {
     const c = canvasRef.current, dpr = dprRef.current;
     setDirty(false);
-    const band = Math.round(34 * dpr);
+    const fp = Math.max(2, Math.round(3 * dpr)), bh = Math.round(30 * dpr), band = bh + fp * 2;
     const out = document.createElement("canvas");
     out.width = c.width; out.height = c.height + band;
     const o = out.getContext("2d");
@@ -4655,32 +4655,33 @@ function SketchPad({ onClose }) {
     o.drawImage(c, 0, band);
     const edge = Math.max(1, Math.round(dpr));
     o.fillStyle = "#c0c0c0"; o.fillRect(0, 0, out.width, band);
-    o.fillStyle = "#ffffff"; o.fillRect(0, 0, out.width, edge);
-    o.fillStyle = "#808080"; o.fillRect(0, band - edge, out.width, edge);
+    o.fillStyle = "#ffffff"; o.fillRect(0, 0, out.width, edge); o.fillRect(0, 0, edge, band);
+    o.fillStyle = "#808080"; o.fillRect(0, band - edge, out.width, edge); o.fillRect(out.width - edge, 0, edge, band);
+    const bx = fp, by = fp, bw = out.width - fp * 2;
+    const grad = o.createLinearGradient(bx, 0, bx + bw, 0);
+    grad.addColorStop(0, "#000080"); grad.addColorStop(1, "#1084d0");
+    o.fillStyle = grad; o.fillRect(bx, by, bw, bh);
     o.textBaseline = "middle";
-    const cy = band / 2, title = "Заметки психонавта", dt = sketchStamp();
-    const fsT = Math.round(13 * dpr), fsD = Math.round(12 * dpr), ic = Math.round(14 * dpr), gap = Math.round(7 * dpr);
+    const cy = by + bh / 2, title = "Заметки психонавта", dt = sketchStamp();
+    const fsT = Math.round(14 * dpr), fsD = Math.round(12 * dpr), ic = Math.round(16 * dpr), gap = Math.round(8 * dpr);
     o.font = "700 " + fsT + "px Tahoma, sans-serif"; const wT = o.measureText(title).width;
     o.font = fsD + "px Tahoma, sans-serif"; const wD = o.measureText(dt).width;
     let x = Math.round((out.width - (ic + gap + wT + gap + wD)) / 2);
-    o.fillStyle = "#008080"; o.fillRect(x, cy - ic / 2, ic, ic);
+    o.fillStyle = "#c0c0c0"; o.fillRect(x, cy - ic / 2, ic, ic);
+    o.fillStyle = "#000000"; o.fillRect(x, cy - ic / 2, ic, edge); o.fillRect(x, cy - ic / 2, edge, ic);
     x += ic + gap;
-    o.textAlign = "left"; o.fillStyle = "#111"; o.font = "700 " + fsT + "px Tahoma, sans-serif";
+    o.textAlign = "left"; o.fillStyle = "#ffffff"; o.font = "700 " + fsT + "px Tahoma, sans-serif";
     o.fillText(title, x, cy);
     x += wT + gap;
-    o.fillStyle = "#666"; o.font = fsD + "px Tahoma, sans-serif";
+    o.fillStyle = "#cfe0f5"; o.font = fsD + "px Tahoma, sans-serif";
     o.fillText(dt, x, cy + Math.round(1 * dpr));
-    out.toBlob(async (blob) => {
+    out.toBlob((blob) => {
       if (!blob) return;
-      const file = new File([blob], "zarisovka.png", { type: "image/png" });
-      try {
-        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
-      } catch (e) {}
       try {
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = "zarisovka.png";
+        const a = document.createElement("a"); a.href = url; a.download = "zarisovka-" + Date.now() + ".png";
         document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        setTimeout(() => URL.revokeObjectURL(url), 8000);
       } catch (e) {}
     }, "image/png");
   }
@@ -4691,7 +4692,7 @@ function SketchPad({ onClose }) {
     { id: "brush", label: "Кисть" }, { id: "eraser", label: "Ластик" }, { id: "spray", label: "Баллончик" },
     { id: "fill", label: "Заливка" }, { id: "line", label: "Линия" }, { id: "rect", label: "Прямоугольник" }, { id: "ellipse", label: "Овал" }, { id: "triangle", label: "Треугольник" },
   ];
-  const toolBtn = (active) => ({ width: "100%", flex: "1 1 0", minHeight: 0, padding: 0, lineHeight: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
+  const toolBtn = (active) => ({ width: 34, height: 34, minWidth: 34, maxWidth: 34, minHeight: 34, maxHeight: 34, flex: "none", flexShrink: 0, flexGrow: 0, padding: 0, lineHeight: 0, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
     background: "#c0c0c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
     boxShadow: active ? "inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080" : "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" });
   const actBtn = { WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer",
@@ -4713,8 +4714,8 @@ function SketchPad({ onClose }) {
       </div>
 
       <div style={{ display: "flex", gap: 2, padding: 3, flex: 1, minHeight: 0 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 1, flex: "none", width: 50,
-          background: "#c0c0c0", padding: 1, boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flex: "none",
+          background: "#c0c0c0", padding: 2, boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080" }}>
           {tools.map(t => (
             <button key={t.id} title={t.label} onClick={() => setTool(t.id)} style={toolBtn(tool === t.id)}>
               <ToolIcon id={t.id} />
