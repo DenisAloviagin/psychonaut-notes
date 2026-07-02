@@ -4477,7 +4477,7 @@ function SketchPad({ onClose }) {
   const [size, setSize] = useState(6);
   const [dirty, setDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
-  const [saveUrl, setSaveUrl] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null);
   const [vh, setVh] = useState(null);
   const [, setHist] = useState(0);
 
@@ -4647,7 +4647,6 @@ function SketchPad({ onClose }) {
 
   function save() {
     const c = canvasRef.current, dpr = dprRef.current;
-    setDirty(false);
     const fp = Math.max(2, Math.round(3 * dpr)), bh = Math.round(30 * dpr), band = bh + fp * 2;
     const out = document.createElement("canvas");
     out.width = c.width; out.height = c.height + band;
@@ -4676,7 +4675,20 @@ function SketchPad({ onClose }) {
     x += wT + gap;
     o.fillStyle = "#cfe0f5"; o.font = fsD + "px Tahoma, sans-serif";
     o.fillText(dt, x, cy + Math.round(1 * dpr));
-    try { setSaveUrl(out.toDataURL("image/png")); } catch (e) {}
+    let dataUrl = "";
+    try { dataUrl = out.toDataURL("image/png"); } catch (e) { return; }
+    setSaveStatus("sending");
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/send-sketch`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initData: tgInitData(), image: dataUrl }),
+        });
+        if (r.ok) { setSaveStatus("sent"); setDirty(false); }
+        else setSaveStatus("error");
+      } catch (e) { setSaveStatus("error"); }
+    })();
   }
 
   function tryClose() { if (dirty) setConfirmClose(true); else onClose(); }
@@ -4764,32 +4776,24 @@ function SketchPad({ onClose }) {
           onCancel={() => setConfirmClose(false)} />
       )}
 
-      {saveUrl && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.5)",
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ width: "100%", maxWidth: 360, maxHeight: "92%", background: "#c0c0c0", display: "flex", flexDirection: "column",
+      {saveStatus === "sending" && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.4)",
+          display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#c0c0c0", padding: "14px 22px", fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: "#000",
             boxShadow: "inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff" }}>
-            <div style={{ background: "linear-gradient(90deg,#000080,#1084d0)", color: "#fff", fontWeight: 700, fontSize: 13,
-              padding: "4px 6px", margin: 2, display: "flex", alignItems: "center", gap: 6, fontFamily: "'Montserrat', sans-serif" }}>
-              <span style={{ width: 14, height: 12, background: "#c0c0c0", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff", flex: "none" }} />
-              <span>Сохранить рисунок</span>
-              <button onClick={() => setSaveUrl(null)} style={{ marginLeft: "auto", WebkitAppearance: "none", appearance: "none", borderRadius: 0,
-                width: 24, height: 20, background: "#c0c0c0", color: "#000", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer",
-                boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>✕</button>
-            </div>
-            <div style={{ padding: "8px 10px", overflow: "auto", minHeight: 0 }}>
-              <div style={{ fontSize: 12, color: "#000", lineHeight: 1.5, marginBottom: 8, fontFamily: "'Montserrat', sans-serif" }}>
-                Зажми рисунок пальцем и выбери «Сохранить фото». Он попадёт прямо в галерею телефона.
-              </div>
-              <img src={saveUrl} alt="Зарисовка" style={{ width: "100%", height: "auto", display: "block",
-                WebkitTouchCallout: "default", WebkitUserSelect: "auto", userSelect: "auto",
-                boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000" }} />
-            </div>
-            <div style={{ padding: 8 }}>
-              <button onClick={() => setSaveUrl(null)} style={{ ...actBtn, flex: "none", width: "100%" }}>Готово</button>
-            </div>
+            Отправляю рисунок...
           </div>
         </div>
+      )}
+      {saveStatus === "sent" && (
+        <MessageBox title="Готово"
+          message="Рисунок отправлен тебе в личку от бота «Заметки психонавта». Открой чат, нажми на фото и сохрани его в галерею."
+          confirmLabel="Понятно" onConfirm={() => setSaveStatus(null)} />
+      )}
+      {saveStatus === "error" && (
+        <MessageBox title="Не удалось"
+          message="Не получилось отправить рисунок. Проверь связь и попробуй ещё раз."
+          confirmLabel="Закрыть" onConfirm={() => setSaveStatus(null)} />
       )}
     </div>
   );
