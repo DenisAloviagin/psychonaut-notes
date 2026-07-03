@@ -128,6 +128,47 @@ function storeKeys() {
   });
 }
 
+// CloudStorage режет значение на 4КБ. Большие записи (сессия + анализ) не влезают,
+// поэтому режем их на куски по CHUNK_LIMIT и собираем обратно при чтении. Всё остаётся в Telegram.
+const CHUNK_LIMIT = 3800;
+const CHUNK_TAG = "\u0001CHUNKS:";
+async function storeSetBig(key, value) {
+  value = String(value == null ? "" : value);
+  try {
+    const prev = await storeGet(key);
+    if (prev && prev.indexOf(CHUNK_TAG) === 0) {
+      const pn = parseInt(prev.slice(CHUNK_TAG.length), 10) || 0;
+      for (let i = 0; i < pn; i++) await storeRemove(key + "__c" + i);
+    }
+  } catch (e) {}
+  if (value.length <= CHUNK_LIMIT) {
+    return await storeSet(key, value);
+  }
+  const n = Math.ceil(value.length / CHUNK_LIMIT);
+  let ok = true;
+  for (let i = 0; i < n; i++) {
+    const part = value.slice(i * CHUNK_LIMIT, (i + 1) * CHUNK_LIMIT);
+    const r = await storeSet(key + "__c" + i, part);
+    ok = ok && r;
+  }
+  const m = await storeSet(key, CHUNK_TAG + n);
+  return ok && m;
+}
+async function storeGetBig(key) {
+  const v = await storeGet(key);
+  if (v && v.indexOf(CHUNK_TAG) === 0) {
+    const n = parseInt(v.slice(CHUNK_TAG.length), 10) || 0;
+    let out = "";
+    for (let i = 0; i < n; i++) {
+      const part = await storeGet(key + "__c" + i);
+      if (part == null) return null;
+      out += part;
+    }
+    return out;
+  }
+  return v;
+}
+
 // ── Emoji через Twemoji (цветные картинки вместо чёрных системных) ────────────
 function linkify(text) {
   if (!text) return text;
@@ -1364,11 +1405,21 @@ const LONGTERM_QUESTIONS = [
   ["q4","Моё новое намерение на следующий период:"],
 ];
 
-function PeriodAccordion({ entries, onChange }) {
+function PeriodAccordion({ entries, onChange, canFinish }) {
   const [open, setOpen] = useState(null);
+  const [confirmPid, setConfirmPid] = useState(null);
+
+  function finishPeriod(pid) {
+    const ex = entries.find(e => e.period === pid);
+    let next;
+    if (ex) next = entries.map(e => e.period === pid ? { ...e, done: true } : e);
+    else next = [...entries, { period: pid, date: new Date().toLocaleDateString("ru-RU", { day:"numeric", month:"long", year:"numeric" }), q1:"", q2:"", q3:"", q4:"", done: true }];
+    onChange(next);
+  }
 
   function setField(pid, key, val) {
     const existing = entries.find(e => e.period === pid);
+    if (existing && existing.done) return;
     let next;
     if (existing) {
       next = entries.map(e => e.period === pid ? { ...e, [key]: val } : e);
@@ -1428,13 +1479,25 @@ function PeriodAccordion({ entries, onChange }) {
                     <div key={key} style={{ marginBottom:12 }}>
                       <Label>{q}</Label>
                       <textarea rows={3} placeholder="пиши честно"
-                        value={entry[key]||""}
+                        value={entry[key]||""} disabled={entry.done}
                         onChange={e => setField(pid, key, e.target.value)} />
                     </div>
                   ))}
-                  {hasContent && (
+                  {entry.done ? (
+                    <div style={{ fontSize:11, color:"#107c10", fontWeight:700, textAlign:"right", marginTop:4 }}>✓ период завершён</div>
+                  ) : (canFinish && hasContent) ? (
+                    confirmPid === pid ? (
+                      <MessageBox title="Завершить период"
+                        message="После завершения этот период изменить будет нельзя, и это откроет новый разбор. Завершить?"
+                        confirmLabel="Завершить" cancelLabel="Отмена"
+                        onConfirm={() => { finishPeriod(pid); setConfirmPid(null); }}
+                        onCancel={() => setConfirmPid(null)} />
+                    ) : (
+                      <Btn onClick={() => setConfirmPid(pid)} style={{ marginTop:4 }}>Завершить период</Btn>
+                    )
+                  ) : hasContent ? (
                     <div style={{ fontSize:10, color:"#107c10", textAlign:"right", marginTop:4 }}>✓ сохранено</div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}
@@ -1447,6 +1510,7 @@ function PeriodAccordion({ entries, onChange }) {
 
 function StepLongterm({ data, onChange, onFinish, onFinishFree, onBack, isPremium, onUpgrade }) {
   const s = data;
+  const [confirmFinish, setConfirmFinish] = useState(false);
   const entries = s.longterm || [{ date: new Date().toLocaleDateString("ru-RU"), q1:"", q2:"", q3:"", q4:"" }];
   const setEntry = (i, k, v) => {
     const next = entries.map((e, idx) => idx===i ? { ...e, [k]:v } : e);
@@ -1470,10 +1534,16 @@ function StepLongterm({ data, onChange, onFinish, onFinishFree, onBack, isPremiu
         onChange={(next) => onChange({ ...s, longterm: next })}
       />
 
-        <IntegrationAnalysis data={data} isPremium={isPremium} onUpgrade={onUpgrade} />
 
         <div style={{ height:8 }} />
-        <Btn onClick={onFinishFree}>Завершить</Btn>
+        {confirmFinish ? (
+          <MessageBox title="Завершить сессию"
+            message="После завершения данные сессии изменить будет нельзя. Дописывать можно будет только в долгосрочную интеграцию по периодам. Завершить?"
+            confirmLabel="Завершить" cancelLabel="Отмена"
+            onConfirm={onFinishFree} onCancel={() => setConfirmFinish(false)} />
+        ) : (
+          <Btn onClick={() => setConfirmFinish(true)}>Завершить</Btn>
+        )}
     </Screen>
   );
 }
@@ -2022,6 +2092,11 @@ ${facetLabels[k]}: ${v}`;
     lockerThoughts.forEach(t => { if (t && t.text) text += `\n- ${t.text}`; });
   }
 
+  if (Array.isArray(session.analyses) && session.analyses.length) {
+    text += `\n\nПРЕДЫДУЩИЕ РАЗБОРЫ ЭТОЙ СЕССИИ (учитывай их, опирайся на прошлые прочтения и покажи движение во времени):`;
+    session.analyses.forEach(a => { if (a && a.text) text += `\n\n[${a.label || "Разбор"}]\n${a.text}`; });
+  }
+
   return text;
 }
 
@@ -2065,26 +2140,43 @@ function LongtermEditor({ session, onUpdateSession, isPremium, onUpgrade }) {
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
       <PeriodAccordion
         entries={entries}
+        canFinish={session.status === "done"}
         onChange={(next) => onUpdateSession({ ...session, longterm: next })}
       />
-      <IntegrationAnalysis data={session} isPremium={isPremium} onUpgrade={onUpgrade} />
     </div>
   );
 }
 
 function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [] }) {
-  const [status, setStatus] = useState(session.analysis ? "done" : "idle");
+  const [status, setStatus] = useState("idle"); // idle | loading | error
+  const analyses = session.analyses || [];
 
-  const hasEnoughData = session.intention_main || session.after_vivid ||
-    FACET_ORDER.some(k => session.facets?.[k] && Object.values(session.facets[k]).some(v => v?.trim()));
+  function pendingBasis() {
+    const done = new Set(analyses.map(a => a.basis));
+    if (session.status === "done" && !done.has("session")) return { basis: "session", label: "Разбор по сессии" };
+    for (const [pid, label] of PERIODS) {
+      const e = (session.longterm || []).find(x => x.period === pid);
+      if (e && e.done && !done.has(pid)) return { basis: pid, label: "Разбор: " + label };
+    }
+    return null;
+  }
+  const pending = pendingBasis();
 
   async function handleAnalyze() {
+    if (!pending) return;
     setStatus("loading");
     try {
       const bound = (locker || []).filter(t => String(t.sid) === String(session.id));
       const text = await runAnalysis(session, bound);
-      onSaveAnalysis(text);
-      setStatus("done");
+      const entry = { basis: pending.basis, label: pending.label, text, at: Date.now() };
+      onSaveAnalysis(entry);
+      try {
+        await fetch(`${API_BASE}/send-analysis`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initData: tgInitData(), text: (entry.label ? entry.label + "\n\n" : "") + text }),
+        });
+      } catch (e) {}
+      setStatus("idle");
     } catch (e) {
       setStatus("error");
     }
@@ -2112,34 +2204,16 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
     </div>
   );
 
-  if (!hasEnoughData) return (
-    <div style={{ paddingTop:8 }}>
-      <Card>
-        <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, textAlign:"center",
-          fontFamily:"'Montserrat', sans-serif" }}>
-          Заполни хотя бы одну грань или раздел «Сразу после», тогда будет что анализировать.
-        </div>
-      </Card>
-    </div>
-  );
-
   return (
     <div style={{ paddingTop:8 }}>
-      {status === "idle" && (
-        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          <Card>
-            <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, marginBottom:12,
-              fontFamily:"'Montserrat', sans-serif" }}>
-              Я прочитаю всё что ты написал в этой сессии и отражу паттерны, противоречия и вопросы для углубления. Это не терапия это зеркало.
-            </div>
-            <div style={{ fontSize:11, color:T.muted, lineHeight:1.6, marginBottom:14,
-              fontFamily:"'Montserrat', sans-serif", background:T.bg, borderRadius:8, padding:"8px 12px" }}>
-              🔒 Для анализа текст сессии уходит на наш сервер и к Claude только для генерации ответа. На нашем сервере он не сохраняется, а сами заметки остаются в твоём Telegram.
-            </div>
-            <Btn onClick={handleAnalyze}>Запустить анализ</Btn>
-          </Card>
-        </div>
-      )}
+      {analyses.map((a, i) => (
+        <Card key={i} style={{ borderLeft:`3px solid ${T.accent}`, marginBottom:12 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:"uppercase",
+            letterSpacing:"0.05em", marginBottom:8, fontFamily:"'Montserrat', sans-serif" }}>{a.label || "Разбор"}</div>
+          <div style={{ fontSize:14, lineHeight:1.8, color:T.ink, whiteSpace:"pre-wrap",
+            fontFamily:"'Montserrat', sans-serif" }}>{a.text}</div>
+        </Card>
+      ))}
 
       {status === "loading" && (
         <Card>
@@ -2155,18 +2229,34 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           <Card>
             <div style={{ fontSize:13, color:T.accent, fontFamily:"'Montserrat', sans-serif" }}>
-              Что-то пошло не так. Попробуй ещё раз.
+              Что-то пошло не так, разбор не получен. Попробуй ещё раз.
             </div>
           </Card>
           <Btn onClick={handleAnalyze}>Попробовать снова</Btn>
         </div>
       )}
 
-      {status === "done" && (
-        <Card style={{ borderLeft:`3px solid ${T.accent}` }}>
-          <div style={{ fontSize:14, lineHeight:1.8, color:T.ink, whiteSpace:"pre-wrap",
-            fontFamily:"'Montserrat', sans-serif" }}>
-            {session.analysis}
+      {status === "idle" && pending && (
+        <Card>
+          <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, marginBottom:12, fontFamily:"'Montserrat', sans-serif" }}>
+            {analyses.length === 0
+              ? "Я прочитаю всё что ты написал в этой сессии и отражу паттерны, противоречия и вопросы для углубления. Это не терапия, это зеркало."
+              : "Появился новый материал. Новый разбор учтёт всю историю сессии и прошлые разборы."}
+          </div>
+          <div style={{ fontSize:11, color:T.muted, lineHeight:1.6, marginBottom:14,
+            fontFamily:"'Montserrat', sans-serif", background:T.bg, borderRadius:8, padding:"8px 12px" }}>
+            🔒 Для анализа текст сессии уходит на сервер и к Claude только для генерации ответа. На сервере он не сохраняется, заметки остаются в твоём Telegram. Готовый разбор придёт тебе и в личку от бота.
+          </div>
+          <Btn onClick={handleAnalyze}>Запустить анализ</Btn>
+        </Card>
+      )}
+
+      {status === "idle" && !pending && (
+        <Card>
+          <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, textAlign:"center", fontFamily:"'Montserrat', sans-serif" }}>
+            {analyses.length === 0
+              ? "Заверши сессию, чтобы стал доступен разбор."
+              : "Разбор по текущим данным уже сделан. Следующий откроется, когда ты завершишь новый период в долгосрочной интеграции."}
           </div>
         </Card>
       )}
@@ -4925,7 +5015,7 @@ export default function App() {
         if (idxRaw) { try { ids = JSON.parse(idxRaw) || []; } catch { ids = []; } }
         const arr = [];
         for (const id of ids) {
-          const raw = await storeGet(NOTE_PREFIX + id);
+          const raw = await storeGetBig(NOTE_PREFIX + id);
           if (raw) {
             try { const sn = JSON.parse(raw); arr.push(sn); persistedRef.current[String(sn.id)] = raw; }
             catch {}
@@ -4959,7 +5049,7 @@ export default function App() {
       for (const s of sessions) {
         const json = JSON.stringify(s);
         if (persistedRef.current[String(s.id)] !== json) {
-          const ok = await storeSet(NOTE_PREFIX + s.id, json);
+          const ok = await storeSetBig(NOTE_PREFIX + s.id, json);
           if (ok) persistedRef.current[String(s.id)] = json;
         }
       }
@@ -4967,7 +5057,7 @@ export default function App() {
       const keys = await storeKeys();
       for (const k of keys) {
         if (k.indexOf(NOTE_PREFIX) === 0) {
-          const kid = k.slice(NOTE_PREFIX.length);
+          const kid = k.slice(NOTE_PREFIX.length).split("__c")[0];
           if (!idStrs.includes(kid)) { await storeRemove(k); delete persistedRef.current[kid]; }
         }
       }
@@ -5132,8 +5222,8 @@ ${facetTexts}
         <SessionDetail session={activeSession} isPremium={isPremium} locker={locker}
           onBack={() => setJournalView("list")}
           onUpgrade={() => setJournalView("upgrade")}
-          onSaveAnalysis={(text) => setSessions(prev =>
-            prev.map(s => s.id === activeSession.id ? { ...s, analysis: text } : s)
+          onSaveAnalysis={(entry) => setSessions(prev =>
+            prev.map(s => s.id === activeSession.id ? { ...s, analyses: [...(s.analyses || []), entry] } : s)
           )}
           onUpdateSession={(updated) => {
             setSessions(prev => prev.map(s => s.id === activeSession.id ? updated : s));
