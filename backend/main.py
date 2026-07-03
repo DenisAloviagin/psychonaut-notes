@@ -217,6 +217,28 @@ async def tg_api(method: str, payload: dict) -> dict:
     return r.json()
 
 
+async def tg_send_text_chunks(chat_id, text: str) -> dict:
+    """Отправляет длинный текст пользователю несколькими сообщениями (лимит Telegram ~4096)."""
+    text = (text or "").strip()
+    if not text:
+        return {"ok": False}
+    LIMIT = 3900
+    parts = []
+    while text:
+        if len(text) <= LIMIT:
+            parts.append(text); break
+        cut = text.rfind("\n", 0, LIMIT)
+        if cut < LIMIT * 0.5:
+            cut = LIMIT
+        parts.append(text[:cut]); text = text[cut:].lstrip("\n")
+    last = {"ok": True}
+    for p in parts:
+        last = await tg_api("sendMessage", {"chat_id": chat_id, "text": p})
+        if not last.get("ok"):
+            return last
+    return last
+
+
 async def tg_send_photo_bytes(chat_id, png_bytes: bytes, caption: str = "") -> dict:
     """Отправляет картинку пользователю как фото. Файл идёт транзитом, нигде не хранится."""
     if not BOT_TOKEN:
@@ -276,6 +298,11 @@ class SketchRequest(BaseModel):
     image: str = ""  # PNG в base64 (можно с префиксом data:image/png;base64,)
 
 
+class AnalysisSendRequest(BaseModel):
+    initData: str = ""
+    text: str = ""
+
+
 # ── Базовые эндпоинты ────────────────────────────────────────────────────────────
 @app.get("/")
 def health():
@@ -332,6 +359,22 @@ async def send_sketch(req: SketchRequest):
     result = await tg_send_photo_bytes(user_id, png)
     if not result.get("ok"):
         print(f"send-sketch error: {result}")
+        raise HTTPException(status_code=502, detail="send failed")
+    return {"ok": True}
+
+
+# ── Анализ: отправляем готовый разбор пользователю в личку текстом ───────────────
+@app.post("/send-analysis")
+async def send_analysis(req: AnalysisSendRequest):
+    user_id = require_tester(req.initData)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="No user id")
+    text = (req.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="empty text")
+    result = await tg_send_text_chunks(user_id, text)
+    if not result.get("ok"):
+        print(f"send-analysis error: {result}")
         raise HTTPException(status_code=502, detail="send failed")
     return {"ok": True}
 
