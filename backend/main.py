@@ -4,6 +4,7 @@ import hashlib
 import json
 import base64
 import asyncio
+import time
 from urllib.parse import parse_qsl
 
 import httpx
@@ -312,6 +313,21 @@ class AnalysisSendRequest(BaseModel):
     text: str = ""
 
 
+# ── Защита ручек анализа: потолок длины и ограничение частоты ────────────────────
+MAX_ANALYZE_CHARS = 60000  # разумный потолок промпта, отсекает мусорные мегабайтные запросы
+_rate_buckets: dict = {}
+
+def check_rate(user_id, name: str, limit: int, window: int) -> None:
+    """Простое ограничение частоты в памяти процесса. Защищает ручку от бесконтрольного дёргания."""
+    key = f"{name}:{user_id}"
+    now = time.time()
+    bucket = [t for t in _rate_buckets.get(key, []) if now - t < window]
+    if len(bucket) >= limit:
+        raise HTTPException(status_code=429, detail="Слишком часто, попробуй чуть позже")
+    bucket.append(now)
+    _rate_buckets[key] = bucket
+
+
 # ── Базовые эндпоинты ────────────────────────────────────────────────────────────
 @app.get("/")
 def health():
@@ -331,14 +347,20 @@ def db_health():
 
 @app.post("/analyze")
 async def analyze(req: AnalyzeRequest):
-    require_tester(req.initData)
+    user_id = require_tester(req.initData)
+    if len(req.prompt or "") > MAX_ANALYZE_CHARS:
+        raise HTTPException(status_code=413, detail="Слишком длинный запрос")
+    check_rate(user_id, "analyze", limit=15, window=300)
     text = await ask_claude(req.prompt, max_tokens=1500)
     return {"text": text or "Не удалось получить анализ."}
 
 
 @app.post("/ratings")
 async def ratings(req: AnalyzeRequest):
-    require_tester(req.initData)
+    user_id = require_tester(req.initData)
+    if len(req.prompt or "") > MAX_ANALYZE_CHARS:
+        raise HTTPException(status_code=413, detail="Слишком длинный запрос")
+    check_rate(user_id, "ratings", limit=20, window=300)
     raw = await ask_claude(req.prompt, max_tokens=100)
     cleaned = raw.replace("```json", "").replace("```", "").strip()
     try:
@@ -354,6 +376,7 @@ async def send_sketch(req: SketchRequest):
     user_id = require_tester(req.initData)
     if not user_id:
         raise HTTPException(status_code=400, detail="No user id")
+    check_rate(user_id, "sketch", limit=10, window=86400)
     raw = req.image or ""
     if raw.startswith("data:") and "," in raw:
         raw = raw.split(",", 1)[1]
