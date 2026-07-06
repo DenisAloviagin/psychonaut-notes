@@ -5,10 +5,23 @@ const API_BASE = "https://psychonaut-notes-backend.onrender.com";
 const tgInitData = () =>
   (typeof window !== "undefined" && window.Telegram?.WebApp?.initData) || "";
 
+// fetch с таймаутом: мёртвый или медленный сервер (холодный старт) не должен
+// вешать приложение в бесконечную загрузку, вместо этого запрос чисто отпадает.
+async function fetchT(url, opts = {}) {
+  const { timeout = 20000, ...rest } = opts;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    return await fetch(url, { ...rest, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 // ── Премиум: статус и счёт берём только с сервера ─────────────
 async function apiPremiumStatus() {
   try {
-    const r = await fetch(`${API_BASE}/premium-status`, {
+    const r = await fetchT(`${API_BASE}/premium-status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ initData: tgInitData() }),
@@ -28,7 +41,7 @@ function fmtDate(iso) {
 
 async function apiCreateInvoice() {
   try {
-    const r = await fetch(`${API_BASE}/create-invoice`, {
+    const r = await fetchT(`${API_BASE}/create-invoice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ initData: tgInitData() }),
@@ -40,7 +53,7 @@ async function apiCreateInvoice() {
 
 async function apiAccessCheck() {
   try {
-    const r = await fetch(`${API_BASE}/access-check`, {
+    const r = await fetchT(`${API_BASE}/access-check`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ initData: tgInitData() }),
@@ -53,7 +66,7 @@ async function apiAccessCheck() {
 
 async function apiConsentStatus() {
   try {
-    const r = await fetch(`${API_BASE}/consent-status`, {
+    const r = await fetchT(`${API_BASE}/consent-status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ initData: tgInitData() }),
@@ -66,7 +79,7 @@ async function apiConsentStatus() {
 
 async function apiConsentAccept() {
   try {
-    const r = await fetch(`${API_BASE}/consent-accept`, {
+    const r = await fetchT(`${API_BASE}/consent-accept`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ initData: tgInitData() }),
@@ -1595,7 +1608,8 @@ function IntegrationAnalysis({ data, isPremium, onUpgrade }) {
 ЗАПИСИ ИНТЕГРАЦИИ:
 ${entries}`;
 
-      const response = await fetch(`${API_BASE}/analyze`, {
+      const response = await fetchT(`${API_BASE}/analyze`, {
+        timeout: 60000,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, initData: tgInitData() }),
@@ -2111,7 +2125,8 @@ ${facetLabels[k]}: ${v}`;
 }
 
 async function runAnalysis(session, lockerThoughts = []) {
-  const response = await fetch(`${API_BASE}/analyze`, {
+  const response = await fetchT(`${API_BASE}/analyze`, {
+    timeout: 60000,
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt: buildPrompt(session, lockerThoughts), initData: tgInitData() }),
@@ -2181,7 +2196,8 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
       const entry = { basis: pending.basis, label: pending.label, text, at: Date.now() };
       onSaveAnalysis(entry);
       try {
-        await fetch(`${API_BASE}/send-analysis`, {
+        await fetchT(`${API_BASE}/send-analysis`, {
+          timeout: 45000,
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ initData: tgInitData(), text: (entry.label ? entry.label + "\n\n" : "") + text }),
         });
@@ -4800,7 +4816,8 @@ function SketchPad({ onClose }) {
     setSaveStatus("sending");
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/send-sketch`, {
+        const r = await fetchT(`${API_BASE}/send-sketch`, {
+          timeout: 45000,
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ initData: tgInitData(), image: dataUrl }),
@@ -5177,7 +5194,7 @@ ${facetTexts}
 
 Где N, целое число от 1 до 10. Если по какой-то области записей нет, поставь 5.`;
 
-      const res = await fetch(`${API_BASE}/ratings`, {
+      const res = await fetchT(`${API_BASE}/ratings`, {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ prompt, initData: tgInitData() })
