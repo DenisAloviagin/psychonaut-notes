@@ -4806,6 +4806,7 @@ function SketchPad({ onClose }) {
           body: JSON.stringify({ initData: tgInitData(), image: dataUrl }),
         });
         if (r.ok) { setSaveStatus("sent"); setDirty(false); }
+        else if (r.status === 429) setSaveStatus("limit");
         else setSaveStatus("error");
       } catch (e) { setSaveStatus("error"); }
     })();
@@ -4915,6 +4916,11 @@ function SketchPad({ onClose }) {
         <MessageBox title="Не удалось"
           message="Не получилось отправить рисунок. Проверь связь и попробуй ещё раз."
           confirmLabel="Закрыть" onConfirm={() => setSaveStatus(null)} />
+      )}
+      {saveStatus === "limit" && (
+        <MessageBox title="Лимит на сегодня"
+          message="Можно сохранять до десяти рисунков в сутки. На сегодня максимум исчерпан, попробуй завтра."
+          confirmLabel="Понятно" onConfirm={() => setSaveStatus(null)} />
       )}
     </div>
   );
