@@ -3,6 +3,7 @@ import hmac
 import hashlib
 import json
 import base64
+import asyncio
 from urllib.parse import parse_qsl
 
 import httpx
@@ -222,7 +223,7 @@ async def tg_send_text_chunks(chat_id, text: str) -> dict:
     text = (text or "").strip()
     if not text:
         return {"ok": False}
-    LIMIT = 3900
+    LIMIT = 3500
     parts = []
     while text:
         if len(text) <= LIMIT:
@@ -232,10 +233,18 @@ async def tg_send_text_chunks(chat_id, text: str) -> dict:
             cut = LIMIT
         parts.append(text[:cut]); text = text[cut:].lstrip("\n")
     last = {"ok": True}
-    for p in parts:
-        last = await tg_api("sendMessage", {"chat_id": chat_id, "text": p})
-        if not last.get("ok"):
+    for idx, p in enumerate(parts):
+        sent = False
+        for attempt in range(3):
+            last = await tg_api("sendMessage", {"chat_id": chat_id, "text": p})
+            if last.get("ok"):
+                sent = True
+                break
+            await asyncio.sleep(1.2)
+        if not sent:
             return last
+        if idx < len(parts) - 1:
+            await asyncio.sleep(0.4)
     return last
 
 
