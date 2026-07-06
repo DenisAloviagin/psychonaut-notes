@@ -511,56 +511,66 @@ async def telegram_webhook(request: Request):
     if not WEBHOOK_SECRET or secret != WEBHOOK_SECRET:
         raise HTTPException(status_code=403, detail="forbidden")
 
-    update = await request.json()
-
-    # Подтверждение оплаты до списания: ответить надо быстро (окно ~10 сек).
-    pcq = update.get("pre_checkout_query")
-    if pcq:
-        await tg_api(
-            "answerPreCheckoutQuery",
-            {"pre_checkout_query_id": pcq["id"], "ok": True},
-        )
+    try:
+        update = await request.json()
+    except Exception:
+        return {"ok": True}
+    if not isinstance(update, dict):
         return {"ok": True}
 
-    # Факт состоявшейся оплаты: записываем в БД (это источник истины).
-    msg = update.get("message") or {}
-    sp = msg.get("successful_payment")
-    if sp:
-        user_id = (msg.get("from") or {}).get("id")
-        charge_id = sp.get("telegram_payment_charge_id")
-        amount = sp.get("total_amount", 0)
-        if user_id and charge_id:
-            try:
-                db_execute(
-                    "INSERT INTO payments "
-                    "(telegram_user_id, telegram_payment_charge_id, stars_amount, expires_at) "
-                    "VALUES (%s, %s, %s, now() + make_interval(days => %s)) "
-                    "ON CONFLICT (telegram_payment_charge_id) DO NOTHING;",
-                    (user_id, charge_id, amount, PREMIUM_DAYS),
+    try:
+        # Подтверждение оплаты до списания: ответить надо быстро (окно ~10 сек).
+        pcq = update.get("pre_checkout_query")
+        if pcq:
+            pcq_id = pcq.get("id")
+            if pcq_id:
+                await tg_api(
+                    "answerPreCheckoutQuery",
+                    {"pre_checkout_query_id": pcq_id, "ok": True},
                 )
-            except Exception as e:
-                print(f"payment insert error: {e}")
+            return {"ok": True}
 
-    # Приветствие на /start с кнопкой запуска приложения.
-    text = (msg.get("text") or "").strip()
-    if text.startswith("/start"):
-        u = msg.get("from") or {}
-        print(f"TESTER_START id={u.get('id')} username={u.get('username')} name={u.get('first_name')}")
-        chat_id = (msg.get("chat") or {}).get("id")
-        if chat_id:
-            await tg_api(
-                "sendMessage",
-                {
-                    "chat_id": chat_id,
-                    "text": GREETING,
-                    "reply_markup": {
-                        "inline_keyboard": [[
-                            {"text": "Открыть приложение",
-                             "web_app": {"url": WEBAPP_URL}}
-                        ]]
+        # Факт состоявшейся оплаты: записываем в БД (это источник истины).
+        msg = update.get("message") or {}
+        sp = msg.get("successful_payment")
+        if sp:
+            user_id = (msg.get("from") or {}).get("id")
+            charge_id = sp.get("telegram_payment_charge_id")
+            amount = sp.get("total_amount", 0)
+            if user_id and charge_id:
+                try:
+                    db_execute(
+                        "INSERT INTO payments "
+                        "(telegram_user_id, telegram_payment_charge_id, stars_amount, expires_at) "
+                        "VALUES (%s, %s, %s, now() + make_interval(days => %s)) "
+                        "ON CONFLICT (telegram_payment_charge_id) DO NOTHING;",
+                        (user_id, charge_id, amount, PREMIUM_DAYS),
+                    )
+                except Exception as e:
+                    print(f"payment insert error: {e}")
+
+        # Приветствие на /start с кнопкой запуска приложения.
+        text = (msg.get("text") or "").strip()
+        if text.startswith("/start"):
+            u = msg.get("from") or {}
+            print(f"TESTER_START id={u.get('id')} username={u.get('username')} name={u.get('first_name')}")
+            chat_id = (msg.get("chat") or {}).get("id")
+            if chat_id:
+                await tg_api(
+                    "sendMessage",
+                    {
+                        "chat_id": chat_id,
+                        "text": GREETING,
+                        "reply_markup": {
+                            "inline_keyboard": [[
+                                {"text": "Открыть приложение",
+                                 "web_app": {"url": WEBAPP_URL}}
+                            ]]
+                        },
                     },
-                },
-            )
+                )
+    except Exception as e:
+        print(f"webhook error: {e}")
 
     return {"ok": True}
 
