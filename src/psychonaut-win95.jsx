@@ -879,18 +879,28 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker }
               <button onClick={() => setFeedback(false)} style={{ width:18, height:16, fontSize:11, lineHeight:"12px",
                 background:"var(--surface)", color:"#000", border:"none", cursor:"pointer", boxShadow:"var(--raised)" }}>✕</button>
             </div>
-            <div style={{ fontSize:12, color:"#000", lineHeight:1.5, padding:"14px 14px 6px" }}>С вопросами и предложениями пиши на почту:</div>
+            <div style={{ fontSize:12, color:"#000", lineHeight:1.5, padding:"14px 14px 6px" }}>С вопросами и предложениями заходи в чат или пиши на почту:</div>
             <div style={{ padding:"0 14px 8px" }}>
-              {[
-                ["","dostoevskifm@tutanota.com","mailto:dostoevskifm@tutanota.com"],
-              ].map(([label, val, href]) => (
-                <a key={href} href={href} target="_blank" rel="noreferrer"
-                  style={{ display:"block", background:"var(--surface)", boxShadow:"var(--raised)", textDecoration:"none",
-                    color:"#000", padding:"9px 12px", marginBottom:8 }}>
-                  {label && <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em" }}>{label}</div>}
-                  <div style={{ fontSize:13, fontWeight:700, color:"#000080" }}>{val}</div>
-                </a>
-              ))}
+              <button onClick={() => {
+                  const url = "https://t.me/+vlYSBmQQiVY5NTYy";
+                  const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+                  if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
+                  else if (tg && tg.openLink) tg.openLink(url);
+                  else window.open(url, "_blank");
+                }}
+                style={{ display:"block", width:"100%", textAlign:"left", WebkitAppearance:"none", appearance:"none", borderRadius:0,
+                  background:"var(--surface)", boxShadow:"var(--raised)", border:"none", cursor:"pointer",
+                  color:"#000", padding:"9px 12px", marginBottom:8 }}>
+                <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em" }}>Чат</div>
+                <div style={{ fontSize:13, fontWeight:700, color:"#000080" }}>Чат пользователей</div>
+                <div style={{ fontSize:10, color:"#555", marginTop:2, lineHeight:1.4 }}>чат пользователей приложения «Заметки психонавта»</div>
+              </button>
+              <a href="mailto:dostoevskifm@tutanota.com" target="_blank" rel="noreferrer"
+                style={{ display:"block", background:"var(--surface)", boxShadow:"var(--raised)", textDecoration:"none",
+                  color:"#000", padding:"9px 12px", marginBottom:8 }}>
+                <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em" }}>Почта</div>
+                <div style={{ fontSize:13, fontWeight:700, color:"#000080" }}>dostoevskifm@tutanota.com</div>
+              </a>
             </div>
             <div style={{ display:"flex", justifyContent:"center", padding:"4px 14px 14px" }}>
               <button onClick={() => setFeedback(false)} style={{ minWidth:90, padding:"6px 14px", fontWeight:700, fontSize:13,
@@ -5017,7 +5027,13 @@ export default function App() {
         for (const id of ids) {
           const raw = await storeGetBig(NOTE_PREFIX + id);
           if (raw) {
-            try { const sn = JSON.parse(raw); arr.push(sn); persistedRef.current[String(sn.id)] = raw; }
+            try {
+              const sn = JSON.parse(raw);
+              if (sn && sn.analysis && !(Array.isArray(sn.analyses) && sn.analyses.length)) {
+                sn.analyses = [{ basis: "session", label: "Разбор по сессии", text: sn.analysis, at: sn.id || Date.now() }];
+              }
+              arr.push(sn); persistedRef.current[String(sn.id)] = raw;
+            }
             catch {}
           }
         }
@@ -5281,14 +5297,9 @@ ${facetTexts}
       <NavBar active={tab} onLocker={() => { setTab("journal"); setJournalView("locker"); }} onMusic={() => { setTab("journal"); setJournalView("music"); }} onPrivacy={() => { setTab("journal"); setJournalView("privacy"); }} onChange={id => {
         setTab(id);
         if (id === "journal") {
-          try {
-            const saved = sessionStorage.getItem("flowData");
-            if (saved && saved !== "{}") {
-              setJournalView("new");
-            } else {
-              setJournalView("list");
-            }
-          } catch { setJournalView("list"); }
+          try { persistDraftNow(); } catch (e) {}
+          setActiveFacet(null);
+          setJournalView("list");
         }
       }} />
 
