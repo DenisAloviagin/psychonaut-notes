@@ -34,6 +34,8 @@ except ValueError:
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
 # Секрет для служебных операций (настройка вебхука и возврат денег).
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
+# Секрет режима нагрузочного теста. Пустой = режим выключен (боевое поведение).
+LOADTEST_SECRET = os.environ.get("LOADTEST_SECRET", "")
 # Публичный адрес вебхука. По умолчанию наш бэкенд на Render.
 WEBHOOK_URL = os.environ.get(
     "WEBHOOK_URL",
@@ -292,6 +294,7 @@ async def ask_claude(prompt: str, max_tokens: int) -> str:
 class AnalyzeRequest(BaseModel):
     prompt: str
     initData: str = ""
+    loadtest: str = ""  # секрет режима нагрузочного теста; в боевом режиме игнорируется
 
 
 class InitDataRequest(BaseModel):
@@ -347,6 +350,11 @@ def db_health():
 
 @app.post("/analyze")
 async def analyze(req: AnalyzeRequest):
+    # Режим нагрузочного теста: включается ТОЛЬКО если на сервере задан LOADTEST_SECRET
+    # и запрос принёс тот же секрет. Отдаёт мгновенный фейк без Claude, без БД, без лимитов.
+    # В боевом режиме LOADTEST_SECRET пуст, поэтому это условие всегда ложно.
+    if LOADTEST_SECRET and req.loadtest == LOADTEST_SECRET:
+        return {"text": "LOADTEST OK"}
     user_id = require_tester(req.initData)
     if len(req.prompt or "") > MAX_ANALYZE_CHARS:
         raise HTTPException(status_code=413, detail="Слишком длинный запрос")
