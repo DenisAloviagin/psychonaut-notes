@@ -798,7 +798,269 @@ const NAV = [
   )},
 ];
 
-function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker }) {
+
+// ── Змейка (только для премиума). Вся логика в браузере: сервер и база не участвуют. ──
+function SnakeGame({ isPremium, onBack, onUpgrade }) {
+  const GRID = 16;
+  const HI_KEY = "psy_snake_hi";
+  const canvasRef = useRef(null);
+  const wrapRef = useRef(null);
+  const [px, setPx] = useState(320);
+  const [score, setScore] = useState(0);
+  const [hi, setHi] = useState(0);
+  const [over, setOver] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [fx, setFx] = useState("");
+
+  const snake = useRef([]);
+  const dir = useRef({ x: 1, y: 0 });
+  const nextDir = useRef({ x: 1, y: 0 });
+  const items = useRef([]);
+  const eff = useRef({ slow: 0, dash: 0, invert: 0, magnet: 0, mult: 0 });
+  const strong = useRef([]);
+  const peakUntil = useRef(0);
+  const grow = useRef(0);
+  const alive = useRef(false);
+  const pausedR = useRef(false);
+  const loop = useRef(null);
+  const shake = useRef(0);
+  const touch = useRef(null);
+  const scoreRef = useRef(0);
+  const hiRef = useRef(0);
+
+  useEffect(() => {
+    (async () => { try { const v = await storeGet(HI_KEY); if (v) { const n = parseInt(v, 10) || 0; hiRef.current = n; setHi(n); } } catch (e) {} })();
+    const measure = () => {
+      const w = wrapRef.current ? wrapRef.current.clientWidth : 320;
+      setPx(Math.max(220, Math.min(360, w - 8)));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => { window.removeEventListener("resize", measure); if (loop.current) clearTimeout(loop.current); };
+  }, []);
+
+  if (!isPremium) {
+    return (
+      <Screen>
+        <BackBtn onClick={onBack} />
+        <div style={{ background:"var(--surface)", boxShadow:"var(--sunken)", borderRadius:14, padding:20, textAlign:"center", marginTop:8 }}>
+          <div style={{ fontSize:32, marginBottom:12 }}>🐍</div>
+          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:22, letterSpacing:"0.05em", color:T.ink, marginBottom:10 }}>ЗМЕЙКА ПСИХОНАВТА</div>
+          <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, marginBottom:20, fontFamily:"'Montserrat', sans-serif" }}>
+            Змейка ловит грибы, кактусы, марки, таблетки и каннабис, и каждый предмет ненадолго меняет игру. Мини-игра для передышки, доступна в полной версии.
+          </div>
+          <Btn onClick={onUpgrade}>Открыть полный доступ</Btn>
+        </div>
+      </Screen>
+    );
+  }
+
+  const boardPx = Math.floor(px / GRID) * GRID;
+  const C = Math.floor(px / GRID);
+
+  function randCell() { return { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) }; }
+  function occupied(c) {
+    return snake.current.some(sg => sg.x === c.x && sg.y === c.y) || items.current.some(it => it.x === c.x && it.y === c.y);
+  }
+  function spawnItem() {
+    let c, tries = 0;
+    do { c = randCell(); tries++; } while (occupied(c) && tries < 60);
+    const r = Math.random();
+    let type;
+    if (r < 0.45) type = "berry";
+    else if (r < 0.57) type = "mushroom";
+    else if (r < 0.69) type = "cactus";
+    else if (r < 0.77) type = "marka";
+    else if (r < 0.88) type = "pill";
+    else type = "cannabis";
+    items.current.push({ x: c.x, y: c.y, type });
+  }
+  function ensureItems() { while (items.current.length < 4) spawnItem(); }
+
+  function reset() {
+    const mid = Math.floor(GRID / 2);
+    snake.current = [{ x: mid, y: mid }, { x: mid - 1, y: mid }, { x: mid - 2, y: mid }];
+    dir.current = { x: 1, y: 0 }; nextDir.current = { x: 1, y: 0 };
+    items.current = []; ensureItems();
+    eff.current = { slow: 0, dash: 0, invert: 0, magnet: 0, mult: 0 };
+    strong.current = []; peakUntil.current = 0; grow.current = 0; shake.current = 0;
+    scoreRef.current = 0; setScore(0); setOver(false); setPaused(false); pausedR.current = false; setFx("");
+    alive.current = true; setStarted(true);
+    if (loop.current) clearTimeout(loop.current);
+    schedule();
+  }
+
+  function tickMs() {
+    const now = Date.now();
+    if (eff.current.dash > now) return 80;
+    if (eff.current.slow > now) return 230;
+    return 145;
+  }
+  function schedule() { loop.current = setTimeout(step, tickMs()); }
+
+  function setDir(nx, ny) {
+    if (!alive.current || pausedR.current) return;
+    if (Date.now() < peakUntil.current) return;
+    let dx = nx, dy = ny;
+    if (eff.current.invert > Date.now()) { dx = -nx; dy = -ny; }
+    if (dx === -dir.current.x && dy === -dir.current.y) return;
+    nextDir.current = { x: dx, y: dy };
+  }
+
+  function addScore(n) { scoreRef.current += n; setScore(scoreRef.current); }
+  function strongHit(now) {
+    strong.current = strong.current.filter(t => now - t < 8000);
+    strong.current.push(now);
+    if (strong.current.length >= 3) { peakUntil.current = now + 1500; strong.current = []; shake.current = 10; }
+  }
+  function pullItems(head) {
+    items.current.forEach(it => {
+      if (Math.abs(it.x - head.x) + Math.abs(it.y - head.y) <= 5) {
+        if (it.x < head.x) it.x++; else if (it.x > head.x) it.x--;
+        else if (it.y < head.y) it.y++; else if (it.y > head.y) it.y--;
+      }
+    });
+  }
+  function eat(type, now) {
+    const mult = eff.current.mult > now ? 2 : 1;
+    if (type === "berry") { grow.current += 1; addScore(10 * mult); }
+    else if (type === "mushroom") { grow.current += 1; eff.current.slow = now + 5000; addScore(5 * mult); }
+    else if (type === "cactus") { grow.current += 3; eff.current.dash = now + 5000; addScore(15 * mult); strongHit(now); }
+    else if (type === "marka") { grow.current += 1; eff.current.invert = now + 4000; addScore(5 * mult); strongHit(now); shake.current = 6; }
+    else if (type === "pill") { grow.current += 1; eff.current.magnet = now + 5000; addScore(5 * mult); }
+    else if (type === "cannabis") { grow.current += 1; eff.current.mult = now + 6000; addScore(10 * mult); }
+  }
+  function updateFx(now) {
+    let label = "";
+    if (now < peakUntil.current) label = "ПЕРЕДОЗ";
+    else if (eff.current.invert > now) label = "ЛСД · инверсия";
+    else if (eff.current.dash > now) label = "Мескалин · рывок";
+    else if (eff.current.slow > now) label = "Гриб · замедление";
+    else if (eff.current.magnet > now) label = "МДМА · магнит";
+    else if (eff.current.mult > now) label = "Каннабис · x2";
+    setFx(label);
+  }
+  function gameOver() {
+    alive.current = false; setOver(true);
+    if (scoreRef.current > hiRef.current) {
+      hiRef.current = scoreRef.current; setHi(scoreRef.current);
+      try { storeSet(HI_KEY, String(scoreRef.current)); } catch (e) {}
+    }
+  }
+
+  function step() {
+    if (!alive.current) return;
+    if (pausedR.current) { schedule(); return; }
+    const now = Date.now();
+    dir.current = nextDir.current;
+    const head = snake.current[0];
+    const nh = { x: (head.x + dir.current.x + GRID) % GRID, y: (head.y + dir.current.y + GRID) % GRID };
+    if (snake.current.some(sg => sg.x === nh.x && sg.y === nh.y)) { gameOver(); return; }
+    snake.current.unshift(nh);
+    const idx = items.current.findIndex(it => it.x === nh.x && it.y === nh.y);
+    if (idx >= 0) { eat(items.current[idx].type, now); items.current.splice(idx, 1); ensureItems(); }
+    if (grow.current > 0) grow.current--; else snake.current.pop();
+    if (eff.current.magnet > now) pullItems(nh);
+    updateFx(now);
+    if (shake.current > 0) shake.current--;
+    draw();
+    schedule();
+  }
+
+  function drawItem(g, it) {
+    const x = it.x * C, y = it.y * C, cx = x + C / 2, cy = y + C / 2, r = C * 0.32;
+    if (it.type === "berry") { g.fillStyle = "#c0392b"; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); }
+    else if (it.type === "mushroom") { g.fillStyle = "#d34b4b"; g.beginPath(); g.arc(cx, cy - 1, r, Math.PI, 0); g.fill(); g.fillStyle = "#f0e0d0"; g.fillRect(cx - r * 0.4, cy - 1, r * 0.8, r); g.fillStyle = "#fff"; g.fillRect(cx - 1, cy - r + 1, 2, 2); }
+    else if (it.type === "cactus") { g.fillStyle = "#3a8f3a"; g.fillRect(cx - 2, y + 2, 4, C - 4); g.fillRect(cx - 5, cy - 1, 3, 3); g.fillRect(cx + 2, cy - 3, 3, 3); }
+    else if (it.type === "marka") { g.fillStyle = "#e8e8f0"; g.fillRect(x + 3, y + 3, C - 6, C - 6); g.strokeStyle = "#8a5fd0"; g.strokeRect(x + 3, y + 3, C - 6, C - 6); g.fillStyle = "#8a5fd0"; g.beginPath(); g.arc(cx, cy, 2, 0, 7); g.fill(); }
+    else if (it.type === "pill") { g.fillStyle = "#fff"; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); g.strokeStyle = "#c060a0"; g.beginPath(); g.moveTo(cx - r, cy); g.lineTo(cx + r, cy); g.stroke(); }
+    else if (it.type === "cannabis") { g.fillStyle = "#2f9e2f"; for (let k = -1; k <= 1; k++) { g.beginPath(); g.ellipse(cx + k * 3, cy, 2, r, k * 0.4, 0, 7); g.fill(); } }
+  }
+  function draw() {
+    const cv = canvasRef.current; if (!cv) return;
+    const g = cv.getContext("2d");
+    const W = C * GRID;
+    let ox = 0, oy = 0;
+    if (shake.current > 0) { ox = Math.random() * 4 - 2; oy = Math.random() * 4 - 2; }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.save(); g.translate(ox, oy);
+    g.fillStyle = "#dfeecf"; g.fillRect(0, 0, W, W);
+    g.strokeStyle = "rgba(0,0,0,0.06)"; g.lineWidth = 1;
+    for (let i = 1; i < GRID; i++) { g.beginPath(); g.moveTo(i * C, 0); g.lineTo(i * C, W); g.stroke(); g.beginPath(); g.moveTo(0, i * C); g.lineTo(W, i * C); g.stroke(); }
+    items.current.forEach(it => drawItem(g, it));
+    snake.current.forEach((sg, i) => { g.fillStyle = i === 0 ? "#1f7a1f" : "#2f9e2f"; g.fillRect(sg.x * C + 1, sg.y * C + 1, C - 2, C - 2); });
+    if (eff.current.invert > Date.now()) { g.fillStyle = "rgba(180,60,200,0.12)"; g.fillRect(0, 0, W, W); }
+    g.restore();
+  }
+
+  function onTouchStart(e) { const t = e.touches[0]; touch.current = { x: t.clientX, y: t.clientY }; }
+  function onTouchMove(e) { if (e.cancelable) e.preventDefault(); }
+  function onTouchEnd(e) {
+    if (!touch.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.current.x, dy = t.clientY - touch.current.y;
+    touch.current = null;
+    if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
+    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0); else setDir(0, dy > 0 ? 1 : -1);
+  }
+  function togglePause() { if (!alive.current) return; const p = !pausedR.current; pausedR.current = p; setPaused(p); }
+
+  const arrow = { width: 46, height: 40, WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer", fontSize: 18, fontWeight: 700, color: "#000", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" };
+
+  return (
+    <Screen>
+      <BackBtn onClick={onBack} />
+      <div ref={wrapRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 4 }}>
+        <div style={{ width: "100%", maxWidth: 380, background: "var(--surface)", boxShadow: "var(--raised)" }}>
+          <div style={{ background: "linear-gradient(90deg,#000080,#1084d0)", color: "#fff", fontWeight: 700, fontSize: 13, padding: "4px 8px", margin: 2, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 14, height: 12, background: "#c0c0c0", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff", flex: "none" }} />
+            <span>Змейка</span>
+            <span style={{ marginLeft: "auto", fontSize: 12 }}>рекорд {hi}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 10px", fontFamily: "'Montserrat', sans-serif" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#000" }}>Счёт {score}</span>
+            <span style={{ fontSize: 12, color: "#8a5fd0", minHeight: 16, fontWeight: 700 }}>{fx}</span>
+          </div>
+          <div style={{ position: "relative", padding: "0 8px 8px", display: "flex", justifyContent: "center" }}>
+            <div style={{ position: "relative", boxShadow: "inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000", lineHeight: 0 }}>
+              <canvas ref={canvasRef} width={boardPx} height={boardPx}
+                onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+                style={{ touchAction: "none", display: "block", width: boardPx, height: boardPx }} />
+              {(!started || over || paused) && (
+                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(0,0,0,0.35)" }}>
+                  {over && <div style={{ color: "#fff", fontWeight: 700, fontSize: 16 }}>Игра окончена · {score}</div>}
+                  {paused && !over && <div style={{ color: "#fff", fontWeight: 700, fontSize: 16 }}>Пауза</div>}
+                  {(!started || over) && (
+                    <button onClick={reset} style={{ ...arrow, width: 150, height: 38, fontSize: 14 }}>{over ? "Заново" : "Новая игра"}</button>
+                  )}
+                  {paused && !over && <button onClick={togglePause} style={{ ...arrow, width: 150, height: 38, fontSize: 14 }}>Продолжить</button>}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <button style={arrow} onClick={() => setDir(0, -1)}>▲</button>
+          <div style={{ display: "flex", gap: 4 }}>
+            <button style={arrow} onClick={() => setDir(-1, 0)}>◀</button>
+            <button style={{ ...arrow, fontSize: 12 }} onClick={togglePause}>{paused ? "▶" : "❚❚"}</button>
+            <button style={arrow} onClick={() => setDir(1, 0)}>▶</button>
+          </div>
+          <button style={arrow} onClick={() => setDir(0, 1)}>▼</button>
+        </div>
+
+        <div style={{ width: "100%", maxWidth: 380, fontSize: 11, color: T.muted, lineHeight: 1.6, fontFamily: "'Montserrat', sans-serif", padding: "0 4px" }}>
+          Ягода растит, гриб замедляет, кактус разгоняет, марка переворачивает управление, таблетка притягивает еду, каннабис даёт двойные очки. Свайпы по полю или стрелки. Много сильных эффектов подряд дают короткий передоз.
+        </div>
+      </div>
+    </Screen>
+  );
+}
+
+function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, onGame }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [about, setAbout] = useState(false);
   const [feedback, setFeedback] = useState(false);
@@ -853,6 +1115,8 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker }
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Конфиденциальность</div>
                 <div onClick={() => { setMenuOpen(false); setFeedback(true); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Обратная связь</div>
+                <div onClick={() => { setMenuOpen(false); if (onGame) onGame(); }}
+                  style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Змейка</div>
                 <div onClick={() => { setMenuOpen(false); setAbout(true); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>О программе</div>
               </div>
@@ -5292,6 +5556,9 @@ ${facetTexts}
       {tab === "journal" && journalView === "privacy" && (
         <PrivacyPage onBack={() => setJournalView("list")} onDeleteAll={handleDeleteAll} />
       )}
+      {tab === "journal" && journalView === "game" && (
+        <SnakeGame isPremium={isPremium} onBack={() => setJournalView("list")} onUpgrade={() => setJournalView("upgrade")} />
+      )}
 
       {/* New session flow */}
       {tab === "journal" && journalView === "new" && !activeFacet && (
@@ -5317,7 +5584,7 @@ ${facetTexts}
       )}
       {tab === "tracker" && (!trackerUpgrade || isPremium) && <TrackerPage sessions={sessions} isPremium={isPremium} onUpgrade={() => setTrackerUpgrade(true)} />}
 
-      <NavBar active={tab} onLocker={() => { setTab("journal"); setJournalView("locker"); }} onMusic={() => { setTab("journal"); setJournalView("music"); }} onPrivacy={() => { setTab("journal"); setJournalView("privacy"); }} onChange={id => {
+      <NavBar active={tab} onGame={() => { setTab("journal"); setJournalView("game"); }} onLocker={() => { setTab("journal"); setJournalView("locker"); }} onMusic={() => { setTab("journal"); setJournalView("music"); }} onPrivacy={() => { setTab("journal"); setJournalView("privacy"); }} onChange={id => {
         setTab(id);
         if (id === "journal") {
           try { persistDraftNow(); } catch (e) {}
