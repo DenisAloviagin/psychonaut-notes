@@ -875,12 +875,16 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
   function occupied(c) {
     return snake.current.some(sg => sg.x === c.x && sg.y === c.y) || items.current.some(it => it.x === c.x && it.y === c.y);
   }
+  function specialsCount() { return items.current.filter(it => it.type !== "berry").length; }
   function spawnItem() {
     let c, tries = 0;
     do { c = randCell(); tries++; } while (occupied(c) && tries < 60);
+    if (occupied(c)) return; // не удалось найти свободную клетку
+    const canSpecial = specialsCount() < 2;
     const r = Math.random();
     let type;
-    if (r < 0.41) type = "berry";
+    if (!canSpecial) type = "berry";
+    else if (r < 0.41) type = "berry";
     else if (r < 0.53) type = "mushroom";
     else if (r < 0.65) type = "cactus";
     else if (r < 0.73) type = "marka";
@@ -888,7 +892,10 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
     else type = "cannabis";
     items.current.push({ x: c.x, y: c.y, type });
   }
-  function ensureItems() { while (items.current.length < 4) spawnItem(); }
+  function ensureItems() {
+    let guard = 0;
+    while (items.current.length < 5 && guard < 40) { spawnItem(); guard++; }
+  }
 
   function reset() {
     const mid = Math.floor(GRID / 2);
@@ -926,12 +933,30 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
     strong.current.push(now);
     if (strong.current.length >= 3) { peakUntil.current = now + 1500; strong.current = []; shake.current = 10; }
   }
+  function cellTaken(x, y, self) {
+    return items.current.some(it => it !== self && it.x === x && it.y === y) ||
+      snake.current.some(sg => sg.x === x && sg.y === y);
+  }
   function pullItems(head) {
+    const d = dir.current;
     items.current.forEach(it => {
-      if (Math.abs(it.x - head.x) + Math.abs(it.y - head.y) <= 5) {
-        if (it.x < head.x) it.x++; else if (it.x > head.x) it.x--;
-        else if (it.y < head.y) it.y++; else if (it.y > head.y) it.y--;
+      let nx = it.x, ny = it.y;
+      if (d.x !== 0 && it.y === head.y) {
+        // движемся горизонтально: тянем то, что впереди на этой строке
+        if (d.x > 0 && it.x > head.x) nx = it.x - 1;
+        else if (d.x < 0 && it.x < head.x) nx = it.x + 1;
+        else return;
+      } else if (d.y !== 0 && it.x === head.x) {
+        // движемся вертикально: тянем то, что впереди в этом столбце
+        if (d.y > 0 && it.y > head.y) ny = it.y - 1;
+        else if (d.y < 0 && it.y < head.y) ny = it.y + 1;
+        else return;
+      } else {
+        return; // в соседних дорожках предметы не двигаются
       }
+      if (nx === head.x && ny === head.y) return; // на голову не наезжаем (съедим на своём ходу)
+      if (cellTaken(nx, ny, it)) return; // не наезжаем на другой предмет
+      it.x = nx; it.y = ny;
     });
   }
   function eat(type, now) {
