@@ -812,6 +812,7 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
   const [paused, setPaused] = useState(false);
   const [started, setStarted] = useState(false);
   const [fx, setFx] = useState("");
+  const [rules, setRules] = useState(false);
 
   const snake = useRef([]);
   const dir = useRef({ x: 1, y: 0 });
@@ -968,14 +969,59 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
     schedule();
   }
 
+  function rr(g, x, y, w, h, rad) {
+    g.beginPath();
+    g.moveTo(x + rad, y); g.arcTo(x + w, y, x + w, y + h, rad); g.arcTo(x + w, y + h, x, y + h, rad);
+    g.arcTo(x, y + h, x, y, rad); g.arcTo(x, y, x + w, y, rad); g.closePath();
+  }
   function drawItem(g, it) {
-    const x = it.x * C, y = it.y * C, cx = x + C / 2, cy = y + C / 2, r = C * 0.32;
-    if (it.type === "berry") { g.fillStyle = "#c0392b"; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); }
-    else if (it.type === "mushroom") { g.fillStyle = "#d34b4b"; g.beginPath(); g.arc(cx, cy - 1, r, Math.PI, 0); g.fill(); g.fillStyle = "#f0e0d0"; g.fillRect(cx - r * 0.4, cy - 1, r * 0.8, r); g.fillStyle = "#fff"; g.fillRect(cx - 1, cy - r + 1, 2, 2); }
-    else if (it.type === "cactus") { g.fillStyle = "#3a8f3a"; g.fillRect(cx - 2, y + 2, 4, C - 4); g.fillRect(cx - 5, cy - 1, 3, 3); g.fillRect(cx + 2, cy - 3, 3, 3); }
-    else if (it.type === "marka") { g.fillStyle = "#e8e8f0"; g.fillRect(x + 3, y + 3, C - 6, C - 6); g.strokeStyle = "#8a5fd0"; g.strokeRect(x + 3, y + 3, C - 6, C - 6); g.fillStyle = "#8a5fd0"; g.beginPath(); g.arc(cx, cy, 2, 0, 7); g.fill(); }
-    else if (it.type === "pill") { g.fillStyle = "#fff"; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); g.strokeStyle = "#c060a0"; g.beginPath(); g.moveTo(cx - r, cy); g.lineTo(cx + r, cy); g.stroke(); }
-    else if (it.type === "cannabis") { g.fillStyle = "#2f9e2f"; for (let k = -1; k <= 1; k++) { g.beginPath(); g.ellipse(cx + k * 3, cy, 2, r, k * 0.4, 0, 7); g.fill(); } }
+    const x = it.x * C, y = it.y * C, cx = x + C / 2, cy = y + C / 2, r = C * 0.34;
+    if (it.type === "berry") {
+      g.fillStyle = "#c0392b"; g.beginPath(); g.arc(cx, cy + 1, r, 0, 7); g.fill();
+      g.fillStyle = "#e57368"; g.beginPath(); g.arc(cx - r * 0.3, cy - r * 0.2, r * 0.3, 0, 7); g.fill();
+      g.strokeStyle = "#3a8f3a"; g.lineWidth = Math.max(1, C * 0.06); g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r * 0.3, cy - r * 1.4); g.stroke();
+    }
+    else if (it.type === "mushroom") {
+      const R = C * 0.40;
+      g.fillStyle = "#f3ead6"; g.fillRect(cx - C * 0.16, cy, C * 0.32, R * 0.95);
+      g.fillStyle = "#e02a1f"; g.beginPath(); g.arc(cx, cy + 2, R, Math.PI, 0); g.fill(); g.fillRect(cx - R, cy + 1, R * 2, 3);
+      g.fillStyle = "#ffffff";
+      g.beginPath(); g.arc(cx - R * 0.45, cy - R * 0.2, R * 0.22, 0, 7); g.fill();
+      g.beginPath(); g.arc(cx + R * 0.4, cy - R * 0.15, R * 0.2, 0, 7); g.fill();
+      g.beginPath(); g.arc(cx, cy - R * 0.55, R * 0.18, 0, 7); g.fill();
+    }
+    else if (it.type === "cactus") {
+      g.fillStyle = "#2f9e3f";
+      const tW = C * 0.20, stemTop = cy - r * 1.0, stemBot = cy + r * 1.05;
+      rr(g, cx - tW / 2, stemTop, tW, stemBot - stemTop, 4); g.fill();
+      const laX = cx - r * 0.95, laY = cy + r * 0.15;
+      rr(g, laX, laY, r * 0.7, tW * 0.8, 3); g.fill();
+      rr(g, laX, cy - r * 0.55, tW * 0.8, laY - (cy - r * 0.55) + tW * 0.8, 3); g.fill();
+      const raY = cy - r * 0.1;
+      rr(g, cx + tW * 0.2, raY, r * 0.75, tW * 0.8, 3); g.fill();
+      rr(g, cx + r * 0.7, cy - r * 0.8, tW * 0.8, raY - (cy - r * 0.8) + tW * 0.8, 3); g.fill();
+      g.fillStyle = "rgba(0,0,0,0.12)"; g.fillRect(cx - tW / 2, stemTop, tW * 0.32, stemBot - stemTop);
+      g.fillStyle = "#1f6b2f"; g.fillRect(cx - 1, cy - r * 0.4, 2, 2); g.fillRect(cx - 1, cy + r * 0.1, 2, 2); g.fillRect(cx - 1, cy + r * 0.6, 2, 2);
+    }
+    else if (it.type === "marka") {
+      g.fillStyle = "#f2ecff"; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+      g.strokeStyle = "#7a4fd0"; g.lineWidth = Math.max(1, C * 0.05); g.strokeRect(cx - r, cy - r, r * 2, r * 2);
+      g.lineWidth = Math.max(1, C * 0.07);
+      g.beginPath(); g.arc(cx, cy, r * 0.5, 0, 5.2); g.stroke();
+      g.beginPath(); g.arc(cx, cy, r * 0.22, 0, 6.2); g.stroke();
+    }
+    else if (it.type === "pill") {
+      const R = C * 0.38;
+      g.fillStyle = "#ffffff"; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.fill();
+      g.fillStyle = "#2aa0d8"; g.beginPath(); g.arc(cx, cy, R, Math.PI * 0.5, Math.PI * 1.5); g.fill();
+      g.lineWidth = Math.max(2, C * 0.09); g.strokeStyle = "#12455f"; g.beginPath(); g.moveTo(cx, cy - R); g.lineTo(cx, cy + R); g.stroke();
+      g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.stroke();
+    }
+    else if (it.type === "cannabis") {
+      g.fillStyle = "#2f9e3f";
+      for (let k = -2; k <= 2; k++) { g.save(); g.translate(cx, cy + r * 0.3); g.rotate(k * 0.5); g.beginPath(); g.ellipse(0, -r * 0.6, r * 0.16, r * 0.85, 0, 0, 7); g.fill(); g.restore(); }
+      g.strokeStyle = "#1f6b2f"; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, cy + r * 0.3); g.lineTo(cx, cy + r); g.stroke();
+    }
   }
   function draw() {
     const cv = canvasRef.current; if (!cv) return;
@@ -1011,8 +1057,11 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
 
   return (
     <Screen>
-      <BackBtn onClick={onBack} />
-      <div ref={wrapRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 4 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <button onClick={onBack} style={{ flex: 1, height: 40, WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#000", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>← Назад</button>
+        <button onClick={() => setRules(true)} style={{ flex: 1, height: 40, WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#000", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>Как играть</button>
+      </div>
+      <div ref={wrapRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 8 }}>
         <div style={{ width: "100%", maxWidth: 380, background: "var(--surface)", boxShadow: "var(--raised)" }}>
           <div style={{ background: "linear-gradient(90deg,#000080,#1084d0)", color: "#fff", fontWeight: 700, fontSize: 13, padding: "4px 8px", margin: 2, display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 14, height: 12, background: "#c0c0c0", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff", flex: "none" }} />
@@ -1043,19 +1092,40 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <button style={arrow} onClick={() => setDir(0, -1)}>▲</button>
+          <button style={arrow} onClick={() => setDir(0, -1)}>{"\u25B2\uFE0E"}</button>
           <div style={{ display: "flex", gap: 4 }}>
-            <button style={arrow} onClick={() => setDir(-1, 0)}>◀</button>
-            <button style={{ ...arrow, fontSize: 12 }} onClick={togglePause}>{paused ? "▶" : "❚❚"}</button>
-            <button style={arrow} onClick={() => setDir(1, 0)}>▶</button>
+            <button style={arrow} onClick={() => setDir(-1, 0)}>{"\u25C4\uFE0E"}</button>
+            <button style={{ ...arrow, fontSize: 12 }} onClick={togglePause}>{paused ? "\u25BA\uFE0E" : "\u2759\u2759"}</button>
+            <button style={arrow} onClick={() => setDir(1, 0)}>{"\u25BA\uFE0E"}</button>
           </div>
-          <button style={arrow} onClick={() => setDir(0, 1)}>▼</button>
+          <button style={arrow} onClick={() => setDir(0, 1)}>{"\u25BC\uFE0E"}</button>
         </div>
 
-        <div style={{ width: "100%", maxWidth: 380, fontSize: 11, color: T.muted, lineHeight: 1.6, fontFamily: "'Montserrat', sans-serif", padding: "0 4px" }}>
-          Ягода растит, гриб замедляет, кактус разгоняет, марка переворачивает управление, таблетка притягивает еду, каннабис даёт двойные очки. Свайпы по полю или стрелки. Много сильных эффектов подряд дают короткий передоз.
-        </div>
       </div>
+
+      {rules && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setRules(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340, background: "#c0c0c0", boxShadow: "inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff" }}>
+            <div style={{ background: "linear-gradient(90deg,#000080,#1084d0)", color: "#fff", fontWeight: 700, fontSize: 13, padding: "4px 8px", margin: 2, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>Как играть</span>
+              <button onClick={() => setRules(false)} style={{ marginLeft: "auto", WebkitAppearance: "none", appearance: "none", borderRadius: 0, width: 24, height: 20, background: "#c0c0c0", color: "#000", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>✕</button>
+            </div>
+            <div style={{ padding: "10px 12px 14px", fontSize: 13, color: "#000", lineHeight: 1.7, fontFamily: "'Montserrat', sans-serif" }}>
+              Веди змейку свайпами по полю или стрелками. Собирай предметы, каждый ненадолго меняет игру:
+              <div style={{ height: 8 }} />
+              🔴 ягода растит и даёт очки<br/>
+              🍄 гриб замедляет<br/>
+              🌵 кактус разгоняет и удлиняет<br/>
+              🟪 марка переворачивает управление<br/>
+              💊 таблетка притягивает еду<br/>
+              🌿 каннабис даёт двойные очки
+              <div style={{ height: 8 }} />
+              Много сильных эффектов подряд дают короткий передоз, змейка на секунду перестаёт слушаться. Врезаться можно только в саму себя, стены сквозные.
+            </div>
+          </div>
+        </div>
+      )}
     </Screen>
   );
 }
@@ -1108,15 +1178,15 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, 
                   <div key={id} onClick={() => { setMenuOpen(false); onChange(id); }}
                     style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>{label}</div>
                 ))}
-                <div style={{ height:2, background:"#808080", borderBottom:"1px solid #fff", margin:"3px 2px" }} />
                 <div onClick={() => { setMenuOpen(false); if (onMusic) onMusic(); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Музыка</div>
+                <div onClick={() => { setMenuOpen(false); if (onGame) onGame(); }}
+                  style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Змейка</div>
+                <div style={{ height:2, background:"#808080", borderBottom:"1px solid #fff", margin:"3px 2px" }} />
                 <div onClick={() => { setMenuOpen(false); if (onPrivacy) onPrivacy(); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Конфиденциальность</div>
                 <div onClick={() => { setMenuOpen(false); setFeedback(true); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Обратная связь</div>
-                <div onClick={() => { setMenuOpen(false); if (onGame) onGame(); }}
-                  style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>Змейка</div>
                 <div onClick={() => { setMenuOpen(false); setAbout(true); }}
                   style={{ padding:"8px 10px", fontSize:13, cursor:"pointer", color:"#000" }}>О программе</div>
               </div>
@@ -1651,7 +1721,7 @@ function StepDifficult({ data, onChange, onNext, onBack }) {
         </div>
 
         <div style={{ background:"var(--surface)", boxShadow:"var(--sunken)", border:"none", borderRadius:14, padding:16 }}>
-          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:18, color:T.accent, letterSpacing:"0.06em", marginBottom:8 }}>
+          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:15, color:T.accent, letterSpacing:"0.01em", whiteSpace:"nowrap", marginBottom:8 }}>
             ЕСЛИ ПРЯМО СЕЙЧАС ОЧЕНЬ ТЯЖЕЛО
           </div>
           <div style={{ fontSize:13, color:T.mid, lineHeight:1.6, marginBottom:14, fontFamily:"'Montserrat', sans-serif" }}>
