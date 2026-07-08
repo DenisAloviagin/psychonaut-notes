@@ -321,7 +321,7 @@ const css = `
     box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent;
     border-radius: 0 !important;
   }
-  html, body { overflow-x: hidden; background: var(--surface); overscroll-behavior: none; -webkit-overflow-scrolling: auto; }
+  html, body { overflow-x: hidden; background: var(--surface); }
   body { background: var(--surface); color:#000; font-size:13px; line-height:1.45; font-family:'Montserrat', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'; }
   textarea, input:not([type=range]), select {
     width:100%; font-size:13px; color:#000; background:#fff;
@@ -1186,6 +1186,7 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, 
       )}
       <nav style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:480, margin:"0 auto",
         background:"#008080", zIndex:150,
+        paddingLeft:"max(env(safe-area-inset-left, 0px), 6px)", paddingRight:"max(env(safe-area-inset-right, 0px), 6px)",
         paddingBottom:"calc(3px + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
         <div style={{ background:"var(--surface)", boxShadow:"inset 0 1px #fff, inset 0 2px #dfdfdf",
           borderTop:"1px solid #808080", display:"flex", alignItems:"stretch", gap:3, padding:3 }}>
