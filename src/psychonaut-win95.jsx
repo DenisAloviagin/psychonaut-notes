@@ -5012,7 +5012,7 @@ function SketchPad({ onClose }) {
     const prev = document.body.style.overscrollBehavior;
     document.body.style.overscrollBehavior = "none";
     return () => {
-      try { if (tg && tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {}
+      try { if (tg && tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
       try { if (tg && tg.unlockOrientation) tg.unlockOrientation(); } catch (e) {}
       try { if (tg && tg.offEvent) tg.offEvent("viewportChanged", applyVh); } catch (e) {}
       window.removeEventListener("resize", applyVh);
