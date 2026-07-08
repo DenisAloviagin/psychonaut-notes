@@ -1274,17 +1274,15 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, 
                   else if (tg && tg.openLink) tg.openLink(url);
                   else window.open(url, "_blank");
                 }}
-                style={{ display:"block", width:"100%", textAlign:"left", WebkitAppearance:"none", appearance:"none", borderRadius:0,
+                style={{ display:"block", width:"100%", textAlign:"center", boxSizing:"border-box", WebkitAppearance:"none", appearance:"none", borderRadius:0,
                   background:"var(--surface)", boxShadow:"var(--raised)", border:"none", cursor:"pointer",
-                  color:"#000", padding:"9px 12px", marginBottom:8 }}>
-                <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em" }}>Чат</div>
+                  color:"#000", padding:"10px 12px", marginBottom:8 }}>
                 <div style={{ fontSize:13, fontWeight:700, color:"#000080" }}>Чат пользователей</div>
-                <div style={{ fontSize:10, color:"#555", marginTop:2, lineHeight:1.4 }}>чат пользователей приложения «Заметки психонавта»</div>
               </button>
               <a href="mailto:dostoevskifm@tutanota.com" target="_blank" rel="noreferrer"
-                style={{ display:"block", background:"var(--surface)", boxShadow:"var(--raised)", textDecoration:"none",
-                  color:"#000", padding:"9px 12px", marginBottom:8 }}>
-                <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em" }}>Почта</div>
+                style={{ display:"block", width:"100%", textAlign:"center", boxSizing:"border-box",
+                  background:"var(--surface)", boxShadow:"var(--raised)", textDecoration:"none",
+                  color:"#000", padding:"10px 12px", marginBottom:8 }}>
                 <div style={{ fontSize:13, fontWeight:700, color:"#000080" }}>dostoevskifm@tutanota.com</div>
               </a>
             </div>
@@ -3167,7 +3165,7 @@ function FirstLaunch({ onAccept }) {
 function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy, onLocker }) {
   return (
     <Screen>
-      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px)" }}>
+      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px - env(safe-area-inset-bottom, 0px))" }}>
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:16, fontWeight:800, color:"#000", textAlign:"center",
           whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", letterSpacing:"0.2px",
