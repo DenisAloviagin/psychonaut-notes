@@ -321,7 +321,7 @@ const css = `
     box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent;
     border-radius: 0 !important;
   }
-  html, body { overflow-x: hidden; }
+  html, body { overflow-x: hidden; background: var(--surface); overscroll-behavior: none; -webkit-overflow-scrolling: auto; }
   body { background: var(--surface); color:#000; font-size:13px; line-height:1.45; font-family:'Montserrat', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'; }
   textarea, input:not([type=range]), select {
     width:100%; font-size:13px; color:#000; background:#fff;
@@ -1186,7 +1186,7 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, 
       )}
       <nav style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:480, margin:"0 auto",
         background:"#008080", zIndex:150,
-        paddingBottom:"calc(3px + env(safe-area-inset-bottom))" }}>
+        paddingBottom:"calc(3px + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
         <div style={{ background:"var(--surface)", boxShadow:"inset 0 1px #fff, inset 0 2px #dfdfdf",
           borderTop:"1px solid #808080", display:"flex", alignItems:"stretch", gap:3, padding:3 }}>
 
@@ -3165,7 +3165,7 @@ function FirstLaunch({ onAccept }) {
 function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy, onLocker }) {
   return (
     <Screen>
-      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px - env(safe-area-inset-bottom, 0px))" }}>
+      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px - max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:16, fontWeight:800, color:"#000", textAlign:"center",
           whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", letterSpacing:"0.2px",
@@ -5403,6 +5403,15 @@ export default function App() {
       if (tg) {
         if (tg.ready) tg.ready();
         if (tg.expand) tg.expand();
+        const applySafe = () => {
+          try {
+            const a = (tg.safeAreaInset && tg.safeAreaInset.bottom) || 0;
+            const b = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.bottom) || 0;
+            document.documentElement.style.setProperty("--sab", Math.max(a, b) + "px");
+          } catch (e) {}
+        };
+        applySafe();
+        try { if (tg.onEvent) { tg.onEvent("safeAreaChanged", applySafe); tg.onEvent("contentSafeAreaChanged", applySafe); tg.onEvent("viewportChanged", applySafe); } } catch (e) {}
       }
     } catch (e) {}
   }, []);
