@@ -5433,6 +5433,7 @@ export default function App() {
         if (tg.ready) tg.ready();
         if (tg.expand) tg.expand();
         try { if (tg.setBackgroundColor) tg.setBackgroundColor("#c0c0c0"); } catch (e) {}
+        try { if (tg.setHeaderColor) tg.setHeaderColor("#c0c0c0"); } catch (e) {}
         try { if (tg.setBottomBarColor) tg.setBottomBarColor("#c0c0c0"); } catch (e) {}
         try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
         try { if (tg.onEvent) { tg.onEvent("safeAreaChanged", applySafe); tg.onEvent("contentSafeAreaChanged", applySafe); tg.onEvent("viewportChanged", applySafe); } } catch (e) {}
