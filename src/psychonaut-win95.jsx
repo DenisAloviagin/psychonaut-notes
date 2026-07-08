@@ -418,7 +418,7 @@ function Screen({ children, pad = "52px 10px 96px" }) {
     if (ref.current) ref.current.scrollTop = 0;
   }, []);
   return (
-    <div ref={ref} style={{ height:"100dvh", background:"var(--surface)", padding:pad, overflowY:"auto", overscrollBehavior:"contain", WebkitOverflowScrolling:"touch" }}>
+    <div ref={ref} style={{ height:"100dvh", background:"var(--surface)", padding:pad, overflowY:"auto", overscrollBehavior:"none", WebkitOverflowScrolling:"touch" }}>
       {children}
     </div>
   );
@@ -1187,7 +1187,6 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, 
       )}
       <nav style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:480, margin:"0 auto",
         background:"#008080", zIndex:150,
-        paddingLeft:"max(env(safe-area-inset-left, 0px), 10px)", paddingRight:"max(env(safe-area-inset-right, 0px), 10px)",
         paddingBottom:"calc(3px + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
         <div style={{ background:"var(--surface)", boxShadow:"inset 0 1px #fff, inset 0 2px #dfdfdf",
           borderTop:"1px solid #808080", display:"flex", alignItems:"stretch", gap:3, padding:3 }}>
