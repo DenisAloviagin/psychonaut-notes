@@ -417,7 +417,7 @@ function Screen({ children, pad = "52px 10px 96px" }) {
     if (ref.current) ref.current.scrollTop = 0;
   }, []);
   return (
-    <div ref={ref} style={{ height:"100dvh", background:"var(--surface)", padding:pad, overflowY:"auto", overscrollBehavior:"none", WebkitOverflowScrolling:"touch" }}>
+    <div ref={ref} style={{ minHeight:"100vh", background:"var(--surface)", padding:pad, overflowY:"auto" }}>
       {children}
     </div>
   );
@@ -3165,7 +3165,7 @@ function FirstLaunch({ onAccept }) {
 function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy, onLocker }) {
   return (
     <Screen>
-      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100dvh - 148px - max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
+      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px - max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:16, fontWeight:800, color:"#000", textAlign:"center",
           whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", letterSpacing:"0.2px",
@@ -5422,13 +5422,11 @@ export default function App() {
             bottom = Math.max(bottom, a, b);
           }
         } catch (e) {}
-        if (!bottom) {
-          try {
-            const ios = /iPhone|iPad|iPod/.test((navigator.userAgent) || "");
-            const tall = (window.screen && window.screen.height) ? window.screen.height >= 780 : true;
-            if (ios && tall) bottom = 34;
-          } catch (e) {}
-        }
+        try {
+          const ios = /iPhone|iPad|iPod/.test((navigator.userAgent) || "");
+          const tall = (window.screen && window.screen.height) ? window.screen.height >= 780 : true;
+          if (ios && tall) bottom = Math.max(bottom, 34);
+        } catch (e) {}
         document.documentElement.style.setProperty("--sab", bottom + "px");
       };
       if (tg) {
