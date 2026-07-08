@@ -799,6 +799,17 @@ const NAV = [
 ];
 
 
+// Одинаковый треугольник-стрелка, рисуется кодом, поэтому все 4 стороны идентичны.
+function Tri({ d }) {
+  const pts = {
+    up: "8,3 14,13 2,13",
+    down: "2,3 14,3 8,13",
+    left: "3,8 13,2 13,14",
+    right: "13,8 3,2 3,14",
+  }[d];
+  return (<svg width="16" height="16" viewBox="0 0 16 16"><polygon points={pts} fill="#000" /></svg>);
+}
+
 // ── Змейка (только для премиума). Вся логика в браузере: сервер и база не участвуют. ──
 function SnakeGame({ isPremium, onBack, onUpgrade }) {
   const GRID = 16;
@@ -869,11 +880,11 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
     do { c = randCell(); tries++; } while (occupied(c) && tries < 60);
     const r = Math.random();
     let type;
-    if (r < 0.45) type = "berry";
-    else if (r < 0.57) type = "mushroom";
-    else if (r < 0.69) type = "cactus";
-    else if (r < 0.77) type = "marka";
-    else if (r < 0.88) type = "pill";
+    if (r < 0.41) type = "berry";
+    else if (r < 0.53) type = "mushroom";
+    else if (r < 0.65) type = "cactus";
+    else if (r < 0.73) type = "marka";
+    else if (r < 0.84) type = "pill";
     else type = "cannabis";
     items.current.push({ x: c.x, y: c.y, type });
   }
@@ -894,9 +905,9 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
 
   function tickMs() {
     const now = Date.now();
-    if (eff.current.dash > now) return 80;
-    if (eff.current.slow > now) return 230;
-    return 145;
+    if (eff.current.dash > now) return 92;
+    if (eff.current.slow > now) return 250;
+    return 165;
   }
   function schedule() { loop.current = setTimeout(step, tickMs()); }
 
@@ -982,13 +993,14 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
       g.strokeStyle = "#3a8f3a"; g.lineWidth = Math.max(1, C * 0.06); g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r * 0.3, cy - r * 1.4); g.stroke();
     }
     else if (it.type === "mushroom") {
-      const R = C * 0.40;
-      g.fillStyle = "#f3ead6"; g.fillRect(cx - C * 0.16, cy, C * 0.32, R * 0.95);
-      g.fillStyle = "#e02a1f"; g.beginPath(); g.arc(cx, cy + 2, R, Math.PI, 0); g.fill(); g.fillRect(cx - R, cy + 1, R * 2, 3);
+      const R = C * 0.38;
+      g.fillStyle = "#b98a4a"; g.fillRect(cx - C * 0.14, cy + R * 0.1, C * 0.28, R * 1.0);
+      g.fillStyle = "#8f6a34"; g.fillRect(cx - C * 0.14, cy + R * 0.1, C * 0.09, R * 1.0);
+      g.fillStyle = "#e02a1f"; g.beginPath(); g.arc(cx, cy + R * 0.05, R, Math.PI, 0); g.fill(); g.fillRect(cx - R, cy + R * 0.05 - 1, R * 2, 3);
       g.fillStyle = "#ffffff";
-      g.beginPath(); g.arc(cx - R * 0.45, cy - R * 0.2, R * 0.22, 0, 7); g.fill();
-      g.beginPath(); g.arc(cx + R * 0.4, cy - R * 0.15, R * 0.2, 0, 7); g.fill();
-      g.beginPath(); g.arc(cx, cy - R * 0.55, R * 0.18, 0, 7); g.fill();
+      g.beginPath(); g.arc(cx - R * 0.45, cy - R * 0.2, R * 0.2, 0, 7); g.fill();
+      g.beginPath(); g.arc(cx + R * 0.4, cy - R * 0.15, R * 0.17, 0, 7); g.fill();
+      g.beginPath(); g.arc(cx, cy - R * 0.5, R * 0.15, 0, 7); g.fill();
     }
     else if (it.type === "cactus") {
       g.fillStyle = "#2f9e3f";
@@ -1057,9 +1069,9 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
 
   return (
     <Screen>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <button onClick={onBack} style={{ flex: 1, height: 40, WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#000", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>← Назад</button>
-        <button onClick={() => setRules(true)} style={{ flex: 1, height: 40, WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#000", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>Как играть</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button onClick={onBack} style={{ height: 32, padding: "0 14px", WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#000", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>← Назад</button>
+        <button onClick={() => setRules(true)} style={{ height: 32, padding: "0 14px", WebkitAppearance: "none", appearance: "none", borderRadius: 0, background: "#c0c0c0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#000", boxShadow: "inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf" }}>Как играть</button>
       </div>
       <div ref={wrapRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 8 }}>
         <div style={{ width: "100%", maxWidth: 380, background: "var(--surface)", boxShadow: "var(--raised)" }}>
@@ -1092,13 +1104,15 @@ function SnakeGame({ isPremium, onBack, onUpgrade }) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <button style={arrow} onClick={() => setDir(0, -1)}>{"\u25B2\uFE0E"}</button>
+          <button style={arrow} onClick={() => setDir(0, -1)}><Tri d="up" /></button>
           <div style={{ display: "flex", gap: 4 }}>
-            <button style={arrow} onClick={() => setDir(-1, 0)}>{"\u25C4\uFE0E"}</button>
-            <button style={{ ...arrow, fontSize: 12 }} onClick={togglePause}>{paused ? "\u25BA\uFE0E" : "\u2759\u2759"}</button>
-            <button style={arrow} onClick={() => setDir(1, 0)}>{"\u25BA\uFE0E"}</button>
+            <button style={arrow} onClick={() => setDir(-1, 0)}><Tri d="left" /></button>
+            <button style={arrow} onClick={togglePause}>{paused ? <Tri d="right" /> : (
+              <svg width="16" height="16" viewBox="0 0 16 16"><rect x="4" y="3" width="3" height="10" fill="#000" /><rect x="9" y="3" width="3" height="10" fill="#000" /></svg>
+            )}</button>
+            <button style={arrow} onClick={() => setDir(1, 0)}><Tri d="right" /></button>
           </div>
-          <button style={arrow} onClick={() => setDir(0, 1)}>{"\u25BC\uFE0E"}</button>
+          <button style={arrow} onClick={() => setDir(0, 1)}><Tri d="down" /></button>
         </div>
 
       </div>
