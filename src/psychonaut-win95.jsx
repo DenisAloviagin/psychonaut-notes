@@ -397,11 +397,10 @@ function AccentBar() {
           onCancel={() => setConfirmClose(false)} />
       )}
       {showMinimizeHint && (
-        <MessageBox title="Свернуть нельзя"
-          message="Это приложение нельзя свернуть жестом. Но его можно закрыть. Закрыть приложение?"
-          confirmLabel="Закрыть" cancelLabel="Отмена"
-          onConfirm={() => { setShowMinimizeHint(false); try { if (tg && tg.close) tg.close(); } catch (e) {} }}
-          onCancel={() => setShowMinimizeHint(false)} />
+        <MessageBox title="Свернуть"
+          message="Свернуть приложение можно жестом Telegram: потяни вниз за верхнюю полоску с названием бота."
+          confirmLabel="Понятно"
+          onConfirm={() => setShowMinimizeHint(false)} />
       )}
     </>
   );
