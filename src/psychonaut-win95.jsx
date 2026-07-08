@@ -397,10 +397,11 @@ function AccentBar() {
           onCancel={() => setConfirmClose(false)} />
       )}
       {showMinimizeHint && (
-        <MessageBox title="Свернуть"
-          message="Свернуть приложение можно жестом Telegram: потяни вниз за верхнюю полоску с названием бота."
-          confirmLabel="Понятно"
-          onConfirm={() => setShowMinimizeHint(false)} />
+        <MessageBox title="Свернуть нельзя"
+          message="Это приложение нельзя свернуть жестом. Но его можно закрыть. Закрыть приложение?"
+          confirmLabel="Закрыть" cancelLabel="Отмена"
+          onConfirm={() => { setShowMinimizeHint(false); try { if (tg && tg.close) tg.close(); } catch (e) {} }}
+          onCancel={() => setShowMinimizeHint(false)} />
       )}
     </>
   );
@@ -417,7 +418,7 @@ function Screen({ children, pad = "52px 10px 96px" }) {
     if (ref.current) ref.current.scrollTop = 0;
   }, []);
   return (
-    <div ref={ref} style={{ minHeight:"100vh", background:"var(--surface)", padding:pad, overflowY:"auto" }}>
+    <div ref={ref} style={{ height:"100dvh", background:"var(--surface)", padding:pad, overflowY:"auto", overscrollBehavior:"contain", WebkitOverflowScrolling:"touch" }}>
       {children}
     </div>
   );
@@ -1186,7 +1187,7 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, 
       )}
       <nav style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:480, margin:"0 auto",
         background:"#008080", zIndex:150,
-        paddingLeft:"max(env(safe-area-inset-left, 0px), 6px)", paddingRight:"max(env(safe-area-inset-right, 0px), 6px)",
+        paddingLeft:"max(env(safe-area-inset-left, 0px), 10px)", paddingRight:"max(env(safe-area-inset-right, 0px), 10px)",
         paddingBottom:"calc(3px + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
         <div style={{ background:"var(--surface)", boxShadow:"inset 0 1px #fff, inset 0 2px #dfdfdf",
           borderTop:"1px solid #808080", display:"flex", alignItems:"stretch", gap:3, padding:3 }}>
@@ -3166,7 +3167,7 @@ function FirstLaunch({ onAccept }) {
 function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy, onLocker }) {
   return (
     <Screen>
-      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px - max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
+      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100dvh - 148px - max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:16, fontWeight:800, color:"#000", textAlign:"center",
           whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", letterSpacing:"0.2px",
@@ -5401,19 +5402,45 @@ export default function App() {
   useEffect(() => {
     try {
       const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+      try {
+        const vp = document.querySelector("meta[name=viewport]");
+        if (vp && vp.getAttribute("content") && !/viewport-fit/.test(vp.getAttribute("content"))) {
+          vp.setAttribute("content", vp.getAttribute("content") + ", viewport-fit=cover");
+        }
+      } catch (e) {}
+      const applySafe = () => {
+        let bottom = 0;
+        try {
+          const probe = document.createElement("div");
+          probe.style.cssText = "position:fixed;left:0;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;";
+          document.body.appendChild(probe);
+          bottom = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
+          document.body.removeChild(probe);
+        } catch (e) {}
+        try {
+          if (tg) {
+            const a = (tg.safeAreaInset && tg.safeAreaInset.bottom) || 0;
+            const b = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.bottom) || 0;
+            bottom = Math.max(bottom, a, b);
+          }
+        } catch (e) {}
+        if (!bottom) {
+          try {
+            const ios = /iPhone|iPad|iPod/.test((navigator.userAgent) || "");
+            const tall = (window.screen && window.screen.height) ? window.screen.height >= 780 : true;
+            if (ios && tall) bottom = 34;
+          } catch (e) {}
+        }
+        document.documentElement.style.setProperty("--sab", bottom + "px");
+      };
       if (tg) {
         if (tg.ready) tg.ready();
         if (tg.expand) tg.expand();
-        const applySafe = () => {
-          try {
-            const a = (tg.safeAreaInset && tg.safeAreaInset.bottom) || 0;
-            const b = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.bottom) || 0;
-            document.documentElement.style.setProperty("--sab", Math.max(a, b) + "px");
-          } catch (e) {}
-        };
-        applySafe();
+        try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
         try { if (tg.onEvent) { tg.onEvent("safeAreaChanged", applySafe); tg.onEvent("contentSafeAreaChanged", applySafe); tg.onEvent("viewportChanged", applySafe); } } catch (e) {}
       }
+      applySafe();
+      setTimeout(applySafe, 300);
     } catch (e) {}
   }, []);
   useEffect(() => { runGates(); }, []);
