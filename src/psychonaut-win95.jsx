@@ -142,9 +142,21 @@ function storeKeys() {
 }
 
 // CloudStorage режет значение на 4КБ. Большие записи (сессия + анализ) не влезают,
-// поэтому режем их на куски по CHUNK_LIMIT и собираем обратно при чтении. Всё остаётся в Telegram.
-const CHUNK_LIMIT = 3800;
+// поэтому режем их на куски по размеру в БАЙТАХ и собираем обратно при чтении. Всё остаётся в Telegram.
 const CHUNK_TAG = "\u0001CHUNKS:";
+const CHUNK_BYTES = 3900; // лимит Telegram ~4096 БАЙТ на запись; режем с запасом
+function utf8Chunks(str, maxBytes) {
+  const enc = new TextEncoder();
+  const chunks = [];
+  let cur = "", curBytes = 0;
+  for (const ch of str) {
+    const b = enc.encode(ch).length;
+    if (curBytes + b > maxBytes && cur) { chunks.push(cur); cur = ch; curBytes = b; }
+    else { cur += ch; curBytes += b; }
+  }
+  if (cur) chunks.push(cur);
+  return chunks.length ? chunks : [""];
+}
 async function storeSetBig(key, value) {
   value = String(value == null ? "" : value);
   try {
@@ -154,17 +166,16 @@ async function storeSetBig(key, value) {
       for (let i = 0; i < pn; i++) await storeRemove(key + "__c" + i);
     }
   } catch (e) {}
-  if (value.length <= CHUNK_LIMIT) {
-    return await storeSet(key, value);
+  const parts = utf8Chunks(value, CHUNK_BYTES);
+  if (parts.length <= 1) {
+    return await storeSet(key, parts[0]);
   }
-  const n = Math.ceil(value.length / CHUNK_LIMIT);
   let ok = true;
-  for (let i = 0; i < n; i++) {
-    const part = value.slice(i * CHUNK_LIMIT, (i + 1) * CHUNK_LIMIT);
-    const r = await storeSet(key + "__c" + i, part);
+  for (let i = 0; i < parts.length; i++) {
+    const r = await storeSet(key + "__c" + i, parts[i]);
     ok = ok && r;
   }
-  const m = await storeSet(key, CHUNK_TAG + n);
+  const m = await storeSet(key, CHUNK_TAG + parts.length);
   return ok && m;
 }
 async function storeGetBig(key) {
@@ -321,7 +332,7 @@ const css = `
     box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent;
     border-radius: 0 !important;
   }
-  html, body { overflow-x: hidden; background: var(--surface); }
+  html, body { overflow-x: hidden; }
   body { background: var(--surface); color:#000; font-size:13px; line-height:1.45; font-family:'Montserrat', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'; }
   textarea, input:not([type=range]), select {
     width:100%; font-size:13px; color:#000; background:#fff;
@@ -1186,7 +1197,7 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, 
       )}
       <nav style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:480, margin:"0 auto",
         background:"#008080", zIndex:150,
-        paddingBottom:"calc(3px + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
+        paddingBottom:"calc(3px + env(safe-area-inset-bottom))" }}>
         <div style={{ background:"var(--surface)", boxShadow:"inset 0 1px #fff, inset 0 2px #dfdfdf",
           borderTop:"1px solid #808080", display:"flex", alignItems:"stretch", gap:3, padding:3 }}>
 
@@ -1274,15 +1285,16 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, 
                   else if (tg && tg.openLink) tg.openLink(url);
                   else window.open(url, "_blank");
                 }}
-                style={{ display:"block", width:"100%", textAlign:"center", boxSizing:"border-box", WebkitAppearance:"none", appearance:"none", borderRadius:0,
+                style={{ display:"block", width:"100%", textAlign:"left", WebkitAppearance:"none", appearance:"none", borderRadius:0,
                   background:"var(--surface)", boxShadow:"var(--raised)", border:"none", cursor:"pointer",
-                  color:"#000", padding:"10px 12px", marginBottom:8 }}>
+                  color:"#000", padding:"9px 12px", marginBottom:8 }}>
                 <div style={{ fontSize:13, fontWeight:700, color:"#000080" }}>Чат пользователей</div>
+                <div style={{ fontSize:10, color:"#555", marginTop:2, lineHeight:1.4 }}>чат пользователей приложения «Заметки психонавта»</div>
               </button>
               <a href="mailto:dostoevskifm@tutanota.com" target="_blank" rel="noreferrer"
-                style={{ display:"block", width:"100%", textAlign:"center", boxSizing:"border-box",
-                  background:"var(--surface)", boxShadow:"var(--raised)", textDecoration:"none",
-                  color:"#000", padding:"10px 12px", marginBottom:8 }}>
+                style={{ display:"block", background:"var(--surface)", boxShadow:"var(--raised)", textDecoration:"none",
+                  color:"#000", padding:"9px 12px", marginBottom:8 }}>
+                <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em" }}>Почта</div>
                 <div style={{ fontSize:13, fontWeight:700, color:"#000080" }}>dostoevskifm@tutanota.com</div>
               </a>
             </div>
@@ -2352,8 +2364,11 @@ function buildPrompt(session, lockerThoughts = []) {
 1. **Что я вижу.** Два-три абзаца: паттерны, противоречия, что повторяется и бросается в глаза. Только из текста.
 2. **Намерение и реальность.** Как намерение, с которым человек заходил, соотносится с тем, что пришло, в том числе если они разошлись.
 3. **Тело и трудное.** Что говорит телесный и эмоциональный материал и как бережно обойтись с трудными или незавершёнными местами.
-4. **Перевод в жизнь.** Не совет, а приглашение: что из этого опыта просит маленького конкретного шага и где важно не спешить с большими решениями.
-5. **Вопросы для углубления.** Три конкретных вопроса, выросших именно из его текста.
+4. **Ответ на твой вопрос.** Если человек задал в записях прямой вопрос или запрос (в намерении или в свободных полях), ответь на него здесь прямо, отдельным разделом, обязательно и не пропуская. Если явного вопроса в записях нет, этот раздел пропусти целиком. Если вопрос медицинский или про безопасность, ответь по правилам выше.
+5. **Перевод в жизнь.** Не совет, а приглашение: что из этого опыта просит маленького конкретного шага и где важно не спешить с большими решениями.
+6. **Вопросы для углубления.** Три конкретных вопроса, выросших именно из его текста.
+
+Держи весь разбор в разумном объёме, примерно до 550 слов, чтобы точно уместиться. Заверши ответ целиком и доведи последнюю мысль до конца, не обрывай на полуслове. Если видишь, что не укладываешься, делай каждый раздел короче, но не обрывай текст.
 
 ---
 
@@ -3165,7 +3180,7 @@ function FirstLaunch({ onAccept }) {
 function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy, onLocker }) {
   return (
     <Screen>
-      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px - max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
+      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px - env(safe-area-inset-bottom, 0px))" }}>
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:16, fontWeight:800, color:"#000", textAlign:"center",
           whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", letterSpacing:"0.2px",
@@ -5012,7 +5027,7 @@ function SketchPad({ onClose }) {
     const prev = document.body.style.overscrollBehavior;
     document.body.style.overscrollBehavior = "none";
     return () => {
-      try { if (tg && tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
+      try { if (tg && tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {}
       try { if (tg && tg.unlockOrientation) tg.unlockOrientation(); } catch (e) {}
       try { if (tg && tg.offEvent) tg.offEvent("viewportChanged", applyVh); } catch (e) {}
       window.removeEventListener("resize", applyVh);
@@ -5400,46 +5415,10 @@ export default function App() {
   useEffect(() => {
     try {
       const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
-      try {
-        const vp = document.querySelector("meta[name=viewport]");
-        if (vp && vp.getAttribute("content") && !/viewport-fit/.test(vp.getAttribute("content"))) {
-          vp.setAttribute("content", vp.getAttribute("content") + ", viewport-fit=cover");
-        }
-      } catch (e) {}
-      const applySafe = () => {
-        let bottom = 0;
-        try {
-          const probe = document.createElement("div");
-          probe.style.cssText = "position:fixed;left:0;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;";
-          document.body.appendChild(probe);
-          bottom = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
-          document.body.removeChild(probe);
-        } catch (e) {}
-        try {
-          if (tg) {
-            const a = (tg.safeAreaInset && tg.safeAreaInset.bottom) || 0;
-            const b = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.bottom) || 0;
-            bottom = Math.max(bottom, a, b);
-          }
-        } catch (e) {}
-        try {
-          const ios = /iPhone|iPad|iPod/.test((navigator.userAgent) || "");
-          const tall = (window.screen && window.screen.height) ? window.screen.height >= 780 : true;
-          if (ios && tall) bottom = Math.max(bottom, 34);
-        } catch (e) {}
-        document.documentElement.style.setProperty("--sab", bottom + "px");
-      };
       if (tg) {
         if (tg.ready) tg.ready();
         if (tg.expand) tg.expand();
-        try { if (tg.setBackgroundColor) tg.setBackgroundColor("#c0c0c0"); } catch (e) {}
-        try { if (tg.setHeaderColor) tg.setHeaderColor("#c0c0c0"); } catch (e) {}
-        try { if (tg.setBottomBarColor) tg.setBottomBarColor("#c0c0c0"); } catch (e) {}
-        try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
-        try { if (tg.onEvent) { tg.onEvent("safeAreaChanged", applySafe); tg.onEvent("contentSafeAreaChanged", applySafe); tg.onEvent("viewportChanged", applySafe); } } catch (e) {}
       }
-      applySafe();
-      setTimeout(applySafe, 300);
     } catch (e) {}
   }, []);
   useEffect(() => { runGates(); }, []);
