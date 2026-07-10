@@ -1197,7 +1197,7 @@ function NavBar({ active, onChange, onJournalTab, onPrivacy, onMusic, onLocker, 
       )}
       <nav style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:480, margin:"0 auto",
         background:"#008080", zIndex:150,
-        paddingBottom:"calc(3px + env(safe-area-inset-bottom))" }}>
+        paddingBottom:"calc(3px + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
         <div style={{ background:"var(--surface)", boxShadow:"inset 0 1px #fff, inset 0 2px #dfdfdf",
           borderTop:"1px solid #808080", display:"flex", alignItems:"stretch", gap:3, padding:3 }}>
 
@@ -3180,7 +3180,7 @@ function FirstLaunch({ onAccept }) {
 function JournalList({ sessions, isPremium, onNew, onOpen, onResume, onUpgrade, onPrivacy, onLocker }) {
   return (
     <Screen>
-      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px - env(safe-area-inset-bottom, 0px))" }}>
+      <div style={{ display:"flex", flexDirection:"column", minHeight:"calc(100vh - 148px - max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))" }}>
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:16, fontWeight:800, color:"#000", textAlign:"center",
           whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", letterSpacing:"0.2px",
@@ -5027,7 +5027,7 @@ function SketchPad({ onClose }) {
     const prev = document.body.style.overscrollBehavior;
     document.body.style.overscrollBehavior = "none";
     return () => {
-      try { if (tg && tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {}
+      try { if (tg && tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
       try { if (tg && tg.unlockOrientation) tg.unlockOrientation(); } catch (e) {}
       try { if (tg && tg.offEvent) tg.offEvent("viewportChanged", applyVh); } catch (e) {}
       window.removeEventListener("resize", applyVh);
@@ -5415,10 +5415,46 @@ export default function App() {
   useEffect(() => {
     try {
       const tg = (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+      try {
+        const vp = document.querySelector("meta[name=viewport]");
+        if (vp && vp.getAttribute("content") && !/viewport-fit/.test(vp.getAttribute("content"))) {
+          vp.setAttribute("content", vp.getAttribute("content") + ", viewport-fit=cover");
+        }
+      } catch (e) {}
+      const applySafe = () => {
+        let bottom = 0;
+        try {
+          const probe = document.createElement("div");
+          probe.style.cssText = "position:fixed;left:0;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;";
+          document.body.appendChild(probe);
+          bottom = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
+          document.body.removeChild(probe);
+        } catch (e) {}
+        try {
+          if (tg) {
+            const a = (tg.safeAreaInset && tg.safeAreaInset.bottom) || 0;
+            const b = (tg.contentSafeAreaInset && tg.contentSafeAreaInset.bottom) || 0;
+            bottom = Math.max(bottom, a, b);
+          }
+        } catch (e) {}
+        try {
+          const ios = /iPhone|iPad|iPod/.test((navigator.userAgent) || "");
+          const tall = (window.screen && window.screen.height) ? window.screen.height >= 780 : true;
+          if (ios && tall) bottom = Math.max(bottom, 34);
+        } catch (e) {}
+        document.documentElement.style.setProperty("--sab", bottom + "px");
+      };
       if (tg) {
         if (tg.ready) tg.ready();
         if (tg.expand) tg.expand();
+        try { if (tg.setBackgroundColor) tg.setBackgroundColor("#c0c0c0"); } catch (e) {}
+        try { if (tg.setHeaderColor) tg.setHeaderColor("#c0c0c0"); } catch (e) {}
+        try { if (tg.setBottomBarColor) tg.setBottomBarColor("#c0c0c0"); } catch (e) {}
+        try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
+        try { if (tg.onEvent) { tg.onEvent("safeAreaChanged", applySafe); tg.onEvent("contentSafeAreaChanged", applySafe); tg.onEvent("viewportChanged", applySafe); } } catch (e) {}
       }
+      applySafe();
+      setTimeout(applySafe, 300);
     } catch (e) {}
   }, []);
   useEffect(() => { runGates(); }, []);
