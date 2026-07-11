@@ -5687,9 +5687,12 @@ ${facetTexts}
         <SessionDetail session={activeSession} isPremium={isPremium} locker={locker}
           onBack={() => setJournalView("list")}
           onUpgrade={() => setJournalView("upgrade")}
-          onSaveAnalysis={(entry) => setSessions(prev =>
-            prev.map(s => s.id === activeSession.id ? { ...s, analyses: [...(s.analyses || []), entry] } : s)
-          )}
+          onSaveAnalysis={(entry) => {
+            setActiveSession(cur => cur ? { ...cur, analyses: [...(cur.analyses || []), entry] } : cur);
+            setSessions(prev =>
+              prev.map(s => s.id === activeSession.id ? { ...s, analyses: [...(s.analyses || []), entry] } : s)
+            );
+          }}
           onUpdateSession={(updated) => {
             setSessions(prev => prev.map(s => s.id === activeSession.id ? updated : s));
             setActiveSession(updated);
