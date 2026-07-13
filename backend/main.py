@@ -48,22 +48,22 @@ WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://psychonaut-notes.vercel.app")
 # На время закрытого теста сюда впишутся ID тестировщиков.
 ALLOWLIST = {
     "631093482",     # @dostoevski_fm (Денис)
-    # --- ТЕСТИРОВЩИКИ (доступ открыт), для всех остальных приложение закрыто ---
-    "1617653940",    # @tulasika
-    "393603088",     # @Rbk_kg
-    "5589255130",    # @Kika3232
-    "6064118682",    # @ibratrue
-    "1344091386",    # @alenkabrazil
-    "834656842",     # @nesu_svit_na
-    "192273255",     # @Nyillt
-    "7841938564",    # @eldar_zhitskii2
-    "5877670648",    # @i_Dengo
-    "340115482",     # @AlexShpak
-    "121939826",     # @vidun_n
-    "633552131",     # @djoinsky
-    "1911756701",    # @teona_nakatl
-    "160690850",     # @jkrushinskaya
-    "320575916",     # @LatGy
+    # --- ТЕСТИРОВЩИКИ временно закрыты на время правок; раскомментировать для возврата ---
+    # "1617653940",    # @tulasika
+    # "393603088",     # @Rbk_kg
+    # "5589255130",    # @Kika3232
+    # "6064118682",    # @ibratrue
+    # "1344091386",    # @alenkabrazil
+    # "834656842",     # @nesu_svit_na
+    # "192273255",     # @Nyillt
+    # "7841938564",    # @eldar_zhitskii2
+    # "5877670648",    # @i_Dengo
+    # "340115482",     # @AlexShpak
+    # "121939826",     # @vidun_n
+    # "633552131",     # @djoinsky
+    # "1911756701",    # @teona_nakatl
+    # "160690850",     # @jkrushinskaya
+    # "320575916",     # @LatGy
 }
 
 GREETING = "🖥️ Заметки психонавта запущены.\n\nЭто мини-приложение для интеграции психоделического опыта. Место, где опыт не теряется: подготовка до, запись по горячим следам, спокойный разбор после.\n\nЧто внутри:\n📝 Заметки. Намерения, сама сессия, сложные моменты, что пришло\n🔍 Разбор сессий. Claude отражает паттерны и задаёт вопросы для углубления\n📊 Трекер. Как меняются твои грани от сессии к сессии, два радара\n📚 База знаний. Статьи о подготовке, самом опыте и интеграции\n🛟 Кризис. Что делать в трудный момент, упражнения для заземления\n\nЖми кнопку ниже 👇"
@@ -265,6 +265,18 @@ async def tg_send_photo_bytes(chat_id, png_bytes: bytes, caption: str = "") -> d
     return r.json()
 
 
+async def tg_send_document(chat_id, text: str, filename: str = "Разбор.txt") -> dict:
+    """Отправляет разбор как текстовый документ. Файл идёт транзитом, нигде не хранится."""
+    if not BOT_TOKEN:
+        raise HTTPException(status_code=500, detail="BOT_TOKEN not set")
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument"
+    data = {"chat_id": str(chat_id)}
+    files = {"document": (filename, text.encode("utf-8"), "text/plain; charset=utf-8")}
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.post(url, data=data, files=files)
+    return r.json()
+
+
 # ── Запрос к Claude ─────────────────────────────────────────────────────────────
 async def ask_claude(prompt: str, max_tokens: int) -> str:
     if not CLAUDE_API_KEY:
@@ -314,6 +326,7 @@ class SketchRequest(BaseModel):
 class AnalysisSendRequest(BaseModel):
     initData: str = ""
     text: str = ""
+    title: str = ""
 
 
 # ── Защита ручек анализа: потолок длины и ограничение частоты ────────────────────
@@ -412,7 +425,9 @@ async def send_analysis(req: AnalysisSendRequest):
     text = (req.text or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="empty text")
-    result = await tg_send_text_chunks(user_id, text)
+    title = (req.title or "Разбор").strip() or "Разбор"
+    safe = "".join(c for c in title if c.isalnum() or c in " -_")[:60].strip() or "Разбор"
+    result = await tg_send_document(user_id, text, safe + ".txt")
     if not result.get("ok"):
         print(f"send-analysis error: {result}")
         raise HTTPException(status_code=502, detail="send failed")
