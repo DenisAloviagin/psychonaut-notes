@@ -2589,7 +2589,7 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
         await fetchT(`${API_BASE}/send-analysis`, {
           timeout: 45000,
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ initData: tgInitData(), text: (entry.label ? entry.label + "\n\n" : "") + text }),
+          body: JSON.stringify({ initData: tgInitData(), title: entry.label || "Разбор по сессии", text: (entry.label ? entry.label + "\n\n" : "") + text }),
         });
       } catch (e) {}
       setStatus("idle");
