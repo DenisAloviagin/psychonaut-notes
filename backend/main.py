@@ -372,7 +372,7 @@ async def analyze(req: AnalyzeRequest):
     if len(req.prompt or "") > MAX_ANALYZE_CHARS:
         raise HTTPException(status_code=413, detail="Слишком длинный запрос")
     check_rate(user_id, "analyze", limit=15, window=300)
-    text = await ask_claude(req.prompt, max_tokens=2000)
+    text = await ask_claude(req.prompt, max_tokens=4000)
     return {"text": text or "Не удалось получить анализ."}
 
 
