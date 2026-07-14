@@ -1271,7 +1271,7 @@ function ManualScreen({ onClose }) {
           <P>Твои записи живут в твоём Telegram. Для разбора текст сессии уходит на сервер и к Claude только на время ответа и там не сохраняется. Подробнее в разделе «Конфиденциальность» в меню «Пуск».</P>
 
           <H>Полная версия</H>
-          <P>По годовой подписке открываются разбор от Claude, взгляд Claude в трекере, зарисовки с сохранением и игра «Змейка». Всё остальное доступно бесплатно и без ограничений.</P>
+          <P>По годовой подписке открываются разбор от Claude, взгляд Claude в трекере, зарисовки с сохранением и игра «Змейка». Всё остальное доступно бесплатно и без ограничений. Подписка рассчитана примерно на пять сессий с полным разбором каждой, это двадцать пять разборов от Claude в год.</P>
 
           <H>Оплата</H>
           <P>Полный доступ открывается за звёзды Telegram прямо в приложении. Если со звёздами не получается или их нельзя купить в твоём регионе, загляни в чат пользователей Заметок психонавта: там есть инструкция, как оплатить полный доступ без звёзд.</P>
@@ -2688,8 +2688,13 @@ ${facetLabels[k]}: ${v}`;
   }
 
   if (Array.isArray(lockerThoughts) && lockerThoughts.length) {
-    text += `\n\nЧЕРНОВИКИ К ЭТОЙ СЕССИИ:`;
-    lockerThoughts.forEach(t => { if (t && t.text) text += `\n- ${t.text}`; });
+    text += `\n\nЧЕРНОВИКИ, ПРИВЯЗАННЫЕ К ЭТОЙ СЕССИИ (у каждого дата, когда он записан; учитывай возраст: свежая мысль и мысль недельной давности это разное, не разбирай старую как только что появившуюся):`;
+    lockerThoughts.forEach(t => {
+      if (!t || !t.text) return;
+      let d = "";
+      try { if (t.createdAt) d = " (" + new Date(t.createdAt).toLocaleDateString("ru-RU") + ")"; } catch (e) {}
+      text += `\n- ${t.text}${d}`;
+    });
   }
 
   if (Array.isArray(session.analyses) && session.analyses.length) {
@@ -2879,7 +2884,7 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
       {status === "limit" && (
         <Card>
           <div style={{ fontSize:13, color:T.accent, fontWeight:700, marginBottom:6, fontFamily:"'Montserrat', sans-serif" }}>Достигнут лимит разборов</div>
-          <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, fontFamily:"'Montserrat', sans-serif" }}>Ты использовал все разборы, доступные по подписке в этом периоде. Новые станут доступны в следующем периоде подписки.</div>
+          <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, fontFamily:"'Montserrat', sans-serif" }}>Ты использовал все двадцать пять разборов в этом году. Новые откроются, когда обновишь годовой доступ.</div>
         </Card>
       )}
 
