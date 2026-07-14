@@ -2712,7 +2712,14 @@ async function runAnalysis(session, lockerThoughts = []) {
     body: JSON.stringify({ prompt: buildPrompt(session, lockerThoughts), initData: tgInitData() }),
   });
   if (response.status === 429) { const e = new Error("limit"); e.code = "limit"; throw e; }
-  if (!response.ok) throw new Error("API error");
+  if (!response.ok) {
+    let detail = "";
+    try { const d = await response.json(); detail = d && d.detail ? String(d.detail) : ""; } catch (e) {}
+    const err = new Error(detail || ("Ошибка сервера " + response.status));
+    err.status = response.status;
+    err.detail = detail;
+    throw err;
+  }
   const data = await response.json();
   return data.text || "Не удалось получить анализ.";
 }
@@ -2757,7 +2764,8 @@ function LongtermEditor({ session, onUpdateSession, isPremium, onUpgrade, onGoAn
 }
 
 function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [] }) {
-  const [status, setStatus] = useState("idle"); // idle | loading | error
+  const [status, setStatus] = useState("idle"); // idle | loading | error | limit
+  const [errMsg, setErrMsg] = useState("");
   const [openAnalyses, setOpenAnalyses] = useState({});
   const toggleAnalysis = (i) => setOpenAnalyses(prev => ({ ...prev, [i]: !prev[i] }));
   const analyses = session.analyses || [];
@@ -2790,7 +2798,14 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
       } catch (e) {}
       setStatus("idle");
     } catch (e) {
-      setStatus(e && e.code === "limit" ? "limit" : "error");
+      if (e && e.code === "limit") { setStatus("limit"); }
+      else {
+        let msg = (e && e.message) ? e.message : "";
+        if (e && e.status === 413) msg = "Сессия стала слишком большой для разбора. Напиши в поддержку.";
+        else if (!msg || /Failed to fetch|NetworkError|aborted|timeout/i.test(msg)) msg = "Не удалось связаться с сервером. Проверь связь и попробуй ещё раз.";
+        setErrMsg(msg);
+        setStatus("error");
+      }
     }
   }
 
@@ -2850,8 +2865,8 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
       {status === "error" && (
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           <Card>
-            <div style={{ fontSize:13, color:T.accent, fontFamily:"'Montserrat', sans-serif" }}>
-              Что-то пошло не так, разбор не получен. Попробуй ещё раз.
+            <div style={{ fontSize:13, color:T.accent, fontFamily:"'Montserrat', sans-serif", lineHeight:1.6 }}>
+              {errMsg || "Что-то пошло не так, разбор не получен. Попробуй ещё раз."}
             </div>
           </Card>
           <Btn onClick={handleAnalyze}>Попробовать снова</Btn>
