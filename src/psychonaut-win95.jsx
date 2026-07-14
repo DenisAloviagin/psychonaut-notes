@@ -177,11 +177,8 @@ function cloudGet(k) { return new Promise((r) => { const c = tgCloud(); if (c) {
 function cloudSet(k, v) { return new Promise((r) => { const c = tgCloud(); if (c) { try { c.setItem(k, v, () => r(true)); } catch { r(false); } } else r(false); }); }
 function cloudRemove(k) { return new Promise((r) => { const c = tgCloud(); if (c) { try { c.removeItem(k, () => r(true)); } catch { r(true); } } else r(true); }); }
 
-async function storeSetBig(key, value) {
+async function cloudSetBig(key, value) {
   value = String(value == null ? "" : value);
-  // 1) Локально одним ключом: атомарно, синхронно, без нарезки. Пересохранение не может порвать сессию.
-  lsSet(key, value);
-  // 2) В облако нарезкой для синхронизации между устройствами (вторично, best-effort).
   try {
     const prev = await cloudGet(key);
     if (prev && prev.indexOf(CHUNK_TAG) === 0) {
@@ -193,6 +190,12 @@ async function storeSetBig(key, value) {
   if (parts.length <= 1) { await cloudSet(key, parts[0]); return true; }
   for (let i = 0; i < parts.length; i++) await cloudSet(key + "__c" + i, parts[i]);
   await cloudSet(key, CHUNK_TAG + parts.length);
+  return true;
+}
+async function storeSetBig(key, value) {
+  value = String(value == null ? "" : value);
+  lsSet(key, value);          // локально целиком, синхронно
+  await cloudSetBig(key, value); // облако вторично
   return true;
 }
 async function storeGetBig(key) {
@@ -5789,26 +5792,29 @@ export default function App() {
   }, []);
 
   // Сохранение сессий при любом изменении (только после загрузки).
-  // ВАЖНО: только запись, никакого удаления здесь. Удаление ключей делается
-  // отдельно при ручном удалении сессии, иначе запоздавший асинхронный запуск
-  // мог стереть только что созданную сессию.
+  // Сначала СИНХРОННО в локальную память: и содержимое, и оглавление разом, до любого
+  // ожидания, поэтому оглавление на телефоне всегда совпадает с содержимым и не отстаёт.
+  // Потом не спеша в облако. Только запись, никакого удаления здесь.
   useEffect(() => {
     if (!loaded) return;
     sessionsRef.current = sessions;
+    const changed = [];
+    for (const s of sessions) {
+      const json = JSON.stringify(s);
+      if (persistedRef.current[String(s.id)] !== json) {
+        lsSet(NOTE_PREFIX + s.id, json);
+        persistedRef.current[String(s.id)] = json;
+        changed.push([NOTE_PREFIX + s.id, json]);
+      }
+    }
+    lsSet(INDEX_KEY, JSON.stringify(sessions.map(s => s.id)));
     const mySeq = ++persistSeqRef.current;
     (async () => {
-      for (const s of sessions) {
-        const json = JSON.stringify(s);
-        if (persistedRef.current[String(s.id)] !== json) {
-          const ok = await storeSetBig(NOTE_PREFIX + s.id, json);
-          if (ok) persistedRef.current[String(s.id)] = json;
-        }
+      for (const [k, json] of changed) {
+        await cloudSetBig(k, json);
       }
-      // Индекс пишет только самый свежий запуск и по самому свежему списку,
-      // чтобы устаревший запуск не затёр индекс старыми данными.
       if (mySeq === persistSeqRef.current) {
-        const ids = sessionsRef.current.map(s => s.id);
-        await storeSet(INDEX_KEY, JSON.stringify(ids));
+        await cloudSet(INDEX_KEY, JSON.stringify(sessionsRef.current.map(s => s.id)));
       }
     })();
   }, [sessions, loaded]);
