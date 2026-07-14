@@ -100,43 +100,55 @@ function tgCloud() {
 }
 function storeGet(key) {
   return new Promise((resolve) => {
+    // Сначала мгновенная локальная копия: на этом устройстве она всегда полная и свежая.
+    try {
+      const local = localStorage.getItem(key);
+      if (local !== null) { resolve(local); return; }
+    } catch {}
     const c = tgCloud();
     if (c) {
       try { c.getItem(key, (err, val) => resolve(err ? null : (val || null))); }
       catch { resolve(null); }
     } else {
-      try { resolve(localStorage.getItem(key)); } catch { resolve(null); }
+      resolve(null);
     }
   });
 }
 function storeSet(key, value) {
+  // Синхронная локальная запись = мгновенная надёжность, переживает закрытие приложения.
+  let localOk = false;
+  try { localStorage.setItem(key, value); localOk = true; } catch {}
   return new Promise((resolve) => {
     const c = tgCloud();
     if (c) {
-      try { c.setItem(key, value, (err, ok) => resolve(!err && !!ok)); }
-      catch { resolve(false); }
+      // Облако для синхронизации между устройствами; данные уже сохранены локально.
+      try { c.setItem(key, value, () => resolve(true)); } catch { resolve(localOk); }
     } else {
-      try { localStorage.setItem(key, value); resolve(true); } catch { resolve(false); }
+      resolve(localOk);
     }
   });
 }
 function storeRemove(key) {
+  try { localStorage.removeItem(key); } catch {}
   return new Promise((resolve) => {
     const c = tgCloud();
     if (c) {
       try { c.removeItem(key, () => resolve(true)); } catch { resolve(true); }
     } else {
-      try { localStorage.removeItem(key); resolve(true); } catch { resolve(true); }
+      resolve(true);
     }
   });
 }
 function storeKeys() {
   return new Promise((resolve) => {
+    let localKeys = [];
+    try { localKeys = Object.keys(localStorage); } catch {}
     const c = tgCloud();
     if (c && c.getKeys) {
-      try { c.getKeys((err, keys) => resolve(err ? [] : (keys || []))); } catch { resolve([]); }
+      try { c.getKeys((err, keys) => resolve(err ? localKeys : Array.from(new Set([...(keys || []), ...localKeys])))); }
+      catch { resolve(localKeys); }
     } else {
-      try { resolve(Object.keys(localStorage)); } catch { resolve([]); }
+      resolve(localKeys);
     }
   });
 }
@@ -5662,8 +5674,6 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     (async () => {
-      const ids = sessions.map(s => s.id);
-      await storeSet(INDEX_KEY, JSON.stringify(ids));
       for (const s of sessions) {
         const json = JSON.stringify(s);
         if (persistedRef.current[String(s.id)] !== json) {
@@ -5671,6 +5681,8 @@ export default function App() {
           if (ok) persistedRef.current[String(s.id)] = json;
         }
       }
+      const ids = sessions.map(s => s.id);
+      await storeSet(INDEX_KEY, JSON.stringify(ids));
       const idStrs = ids.map(String);
       const keys = await storeKeys();
       for (const k of keys) {
