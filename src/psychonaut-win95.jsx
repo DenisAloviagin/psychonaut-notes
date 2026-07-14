@@ -2718,6 +2718,8 @@ function LongtermEditor({ session, onUpdateSession, isPremium, onUpgrade }) {
 
 function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [] }) {
   const [status, setStatus] = useState("idle"); // idle | loading | error
+  const [openAnalyses, setOpenAnalyses] = useState({});
+  const toggleAnalysis = (i) => setOpenAnalyses(prev => ({ ...prev, [i]: !prev[i] }));
   const analyses = session.analyses || [];
 
   function pendingBasis() {
@@ -2776,14 +2778,23 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
 
   return (
     <div style={{ paddingTop:8 }}>
-      {analyses.map((a, i) => (
-        <Card key={i} style={{ borderLeft:`3px solid ${T.accent}`, marginBottom:12 }}>
-          <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:"uppercase",
-            letterSpacing:"0.05em", marginBottom:8, fontFamily:"'Montserrat', sans-serif" }}>{a.label || "Разбор"}</div>
-          <div style={{ fontSize:14, lineHeight:1.8, color:T.ink, whiteSpace:"pre-wrap",
-            fontFamily:"'Montserrat', sans-serif" }}>{a.text}</div>
-        </Card>
-      ))}
+      {analyses.map((a, i) => {
+        const open = !!openAnalyses[i];
+        return (
+          <Card key={i} style={{ borderLeft:`3px solid ${T.accent}`, marginBottom:8 }}>
+            <button onClick={() => toggleAnalysis(i)} style={{ width:"100%", cursor:"pointer", textAlign:"left",
+              background:"none", border:"none", padding:0, display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ flex:1, fontSize:12, fontWeight:700, color:T.ink, textTransform:"uppercase",
+                letterSpacing:"0.05em", fontFamily:"'Montserrat', sans-serif" }}>{a.label || "Разбор"}</div>
+              <span style={{ fontSize:16, fontWeight:700, color:T.muted, flexShrink:0, width:16, textAlign:"center" }}>{open ? "\u2212" : "+"}</span>
+            </button>
+            {open && (
+              <div style={{ marginTop:12, fontSize:14, lineHeight:1.8, color:T.ink, whiteSpace:"pre-wrap",
+                fontFamily:"'Montserrat', sans-serif" }}>{a.text}</div>
+            )}
+          </Card>
+        );
+      })}
 
       {status === "loading" && (
         <Card>
@@ -3208,7 +3219,8 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
         <AnalysisTab session={session} isPremium={isPremium} onUpgrade={onUpgrade} onSaveAnalysis={onSaveAnalysis} locker={locker} />
       )}
 
-      {/* Delete button */}
+      {/* Delete button, только на главном экране сессии */}
+      {tab === null && (
       <div style={{ marginTop:24, paddingTop:16, borderTop:`1px solid ${T.light}` }}>
         {!confirmDelete ? (
           <button onClick={() => setConfirmDelete(true)} style={{
@@ -3226,6 +3238,7 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
             onConfirm={onDelete} onCancel={() => setConfirmDelete(false)} />
         )}
       </div>
+      )}
     </Screen>
   );
 }
