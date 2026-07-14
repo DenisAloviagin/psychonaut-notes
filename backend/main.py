@@ -19,11 +19,12 @@ CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
-# Цена премиума в звёздах. На тесте = 1. Меняется только тут, без правок кода.
+# Цена полного доступа в звёздах. 1500 звёзд это примерно 30 долларов для человека.
+# Можно переопределить переменной PREMIUM_STARS на Render, без правок кода.
 try:
-    PREMIUM_STARS = int(os.environ.get("PREMIUM_STARS", "1"))
+    PREMIUM_STARS = int(os.environ.get("PREMIUM_STARS", "1500"))
 except ValueError:
-    PREMIUM_STARS = 1
+    PREMIUM_STARS = 1500
 
 # Срок доступа в днях. 365 = год. Меняется тут, без правок кода.
 try:
@@ -47,25 +48,43 @@ WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://psychonaut-notes.vercel.app")
 
 # Белый список Telegram ID тестировщиков. Пустой набор = вход открыт всем.
 # На время закрытого теста сюда впишутся ID тестировщиков.
-ALLOWLIST = {
-    "631093482",     # @dostoevski_fm (Денис)
-    # --- ТЕСТИРОВЩИКИ временно закрыты на время правок; раскомментировать для возврата ---
-    # "1617653940",    # @tulasika
-    # "393603088",     # @Rbk_kg
-    # "5589255130",    # @Kika3232
-    # "6064118682",    # @ibratrue
-    # "1344091386",    # @alenkabrazil
-    # "834656842",     # @nesu_svit_na
-    # "192273255",     # @Nyillt
-    # "7841938564",    # @eldar_zhitskii2
-    # "5877670648",    # @i_Dengo
-    # "340115482",     # @AlexShpak
-    # "121939826",     # @vidun_n
-    # "633552131",     # @djoinsky
-    # "1911756701",    # @teona_nakatl
-    # "160690850",     # @jkrushinskaya
-    # "320575916",     # @LatGy
+# Вход в приложение открыт всем: пустой ALLOWLIST означает "пускать любого".
+ALLOWLIST = set()
+
+# Ручная выдача полного доступа без оплаты (как будто человек купил).
+# Сюда попадают: Денис и люди, которых он присылает (бывшие тестировщики, прямые оплаты в рублях).
+# Условия ровно те же, что у купивших за звёзды: доступ на год от даты выдачи и 25 разборов в год.
+# Формат: "telegram_id": "ГГГГ-ММ-ДД" (дата выдачи). Чтобы продлить человеку год, поставь новую дату.
+MANUAL_PREMIUM = {
+    "631093482":  "2026-07-15",   # @dostoevski_fm (Денис)
+    "1617653940": "2026-07-15",   # @tulasika
+    "393603088":  "2026-07-15",   # @Rbk_kg
+    "5589255130": "2026-07-15",   # @Kika3232
+    "6064118682": "2026-07-15",   # @ibratrue
+    "1344091386": "2026-07-15",   # @alenkabrazil
+    "834656842":  "2026-07-15",   # @nesu_svit_na
+    "192273255":  "2026-07-15",   # @Nyillt
+    "7841938564": "2026-07-15",   # @eldar_zhitskii2
+    "5877670648": "2026-07-15",   # @i_Dengo
+    "340115482":  "2026-07-15",   # @AlexShpak
+    "121939826":  "2026-07-15",   # @vidun_n
+    "633552131":  "2026-07-15",   # @djoinsky
+    "1911756701": "2026-07-15",   # @teona_nakatl
+    "160690850":  "2026-07-15",   # @jkrushinskaya
+    "320575916":  "2026-07-15",   # @LatGy
 }
+
+
+def manual_premium_expiry(user_id):
+    """Дата окончания ручного доступа: год от даты выдачи. None, если человека нет в списке."""
+    granted = MANUAL_PREMIUM.get(str(user_id))
+    if not granted:
+        return None
+    try:
+        d = datetime.strptime(granted, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+    return d + timedelta(days=PREMIUM_DAYS)
 
 GREETING = "🖥️ Заметки психонавта запущены.\n\nЭто мини-приложение для интеграции психоделического опыта. Место, где опыт не теряется: подготовка до, запись по горячим следам, спокойный разбор после.\n\nЧто внутри:\n📝 Заметки. Намерения, сама сессия, сложные моменты, что пришло\n🔍 Разбор сессий. Claude отражает паттерны и задаёт вопросы для углубления\n📊 Трекер. Как меняются твои грани от сессии к сессии, два радара\n📚 База знаний. Статьи о подготовке, самом опыте и интеграции\n🛟 Кризис. Что делать в трудный момент, упражнения для заземления\n\nЖми кнопку ниже 👇"
 
@@ -211,6 +230,23 @@ def is_allowed(user_id) -> bool:
     if not ALLOWLIST:
         return True
     return str(user_id) in ALLOWLIST
+
+
+def has_premium(user_id) -> bool:
+    """Полный доступ: действующая ручная выдача (год от даты) или действующая оплата."""
+    exp = manual_premium_expiry(user_id)
+    if exp and datetime.now(timezone.utc) < exp:
+        return True
+    if not DATABASE_URL:
+        return False
+    try:
+        row = db_execute(
+            "SELECT 1 FROM payments WHERE telegram_user_id=%s AND refunded=FALSE AND expires_at > now() LIMIT 1;",
+            (user_id,), fetch=True,
+        )
+        return bool(row)
+    except Exception:
+        return False
 
 
 def require_tester(init_data: str):
@@ -430,6 +466,8 @@ async def analyze(req: AnalyzeRequest):
     user_id = require_tester(req.initData)
     if len(req.prompt or "") > MAX_ANALYZE_CHARS:
         raise HTTPException(status_code=413, detail="Слишком длинный запрос")
+    if not has_premium(user_id):
+        raise HTTPException(status_code=403, detail="Нужен полный доступ")
     check_rate(user_id, "analyze", limit=15, window=300)
     analysis_usage_check(user_id)
     text = await ask_claude(req.prompt, max_tokens=4000, model=ANALYSIS_MODEL)
@@ -440,6 +478,8 @@ async def analyze(req: AnalyzeRequest):
 @app.post("/ratings")
 async def ratings(req: AnalyzeRequest):
     user_id = require_tester(req.initData)
+    if not has_premium(user_id):
+        raise HTTPException(status_code=403, detail="Нужен полный доступ")
     if len(req.prompt or "") > MAX_ANALYZE_CHARS:
         raise HTTPException(status_code=413, detail="Слишком длинный запрос")
     check_rate(user_id, "ratings", limit=20, window=300)
@@ -572,6 +612,9 @@ def premium_status(req: InitDataRequest):
     user_id = require_tester(req.initData)
     if not user_id:
         return {"premium": False}
+    m_exp = manual_premium_expiry(user_id)
+    if m_exp and datetime.now(timezone.utc) < m_exp:
+        return {"premium": True, "expiresAt": m_exp.isoformat()}
     try:
         row = db_execute(
             "SELECT expires_at FROM payments "
