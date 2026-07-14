@@ -305,7 +305,13 @@ async def ask_claude(prompt: str, max_tokens: int, model: str = None) -> str:
     async with httpx.AsyncClient(timeout=60) as client:
         r = await client.post(CLAUDE_URL, headers=headers, json=body)
     if r.status_code != 200:
-        raise HTTPException(status_code=502, detail="Claude API error")
+        err_body = ""
+        try:
+            err_body = r.text[:600]
+        except Exception:
+            pass
+        print(f"Claude API error {r.status_code} (model={body['model']}): {err_body}")
+        raise HTTPException(status_code=502, detail=f"Claude API error {r.status_code}")
     data = r.json()
     parts = data.get("content", [])
     if parts and isinstance(parts, list):
@@ -341,7 +347,7 @@ class AnalysisSendRequest(BaseModel):
 
 
 # ── Защита ручек анализа: потолок длины и ограничение частоты ────────────────────
-MAX_ANALYZE_CHARS = 60000  # разумный потолок промпта, отсекает мусорные мегабайтные запросы
+MAX_ANALYZE_CHARS = 160000  # потолок промпта: вмещает сессию со всей историей прошлых разборов
 _rate_buckets: dict = {}
 
 def check_rate(user_id, name: str, limit: int, window: int) -> None:
