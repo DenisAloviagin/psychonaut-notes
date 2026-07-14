@@ -378,7 +378,7 @@ def db_health():
         return {"db": "error", "detail": str(e)}
 
 
-ANALYSIS_LIMIT = 50          # максимум разборов на человека за период подписки
+ANALYSIS_LIMIT = 25          # максимум разборов на человека за год подписки
 ANALYSIS_WINDOW_DAYS = 365   # окно, после которого счётчик обнуляется
 
 def analysis_usage_check(user_id) -> None:
