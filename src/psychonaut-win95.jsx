@@ -3603,15 +3603,15 @@ function UpgradePage({ onBack, onPurchase }) {
       <SectionTitle size={28}>ПОЛНЫЙ ДОСТУП</SectionTitle>
       <div style={{ color:T.mid, marginBottom:24, fontSize:13, lineHeight:1.6, marginTop:6,
         fontFamily:"'Montserrat', sans-serif" }}>
-        Доступ на год. Неограниченные сессии, анализ опыта и трекер изменений.
+        Доступ на год. Двадцать пять разборов от Claude, трекер изменений, зарисовки и «Змейка».
       </div>
 
       <div style={{ display:"flex", flexDirection:"column", gap:0, marginBottom:28,
         boxShadow:"var(--sunken)", overflow:"hidden", background:"var(--surface)" }}>
         {[
-          ["◎","Неограниченные сессии","Веди столько записей сколько нужно"],
-          ["⊕","Анализ от Claude","Паттерны, противоречия и вопросы для углубления по каждой сессии"],
+          ["⊕","Разбор от Claude","Двадцать пять разборов в год: примерно пять сессий с полным разбором каждой"],
           ["⬡","Трекер граней","Два радара, твоя оценка и оценка Claude, динамика по сессиям"],
+          ["◎","Зарисовки и «Змейка»","Рисование пальцем с сохранением и игра для передышки"],
         ].map(([icon, title, desc], i, arr) => (
           <div key={title} style={{
             display:"flex", gap:16, padding:"16px",
