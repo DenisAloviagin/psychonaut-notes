@@ -2,6 +2,7 @@ import os
 import hmac
 import hashlib
 import json
+from datetime import datetime, timezone, timedelta
 import base64
 import asyncio
 import time
@@ -138,6 +139,15 @@ def init_db() -> None:
                     CREATE TABLE IF NOT EXISTS consents (
                         telegram_user_id  BIGINT      PRIMARY KEY,
                         agreed_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS analysis_usage (
+                        telegram_user_id  BIGINT      PRIMARY KEY,
+                        used              INTEGER     NOT NULL DEFAULT 0,
+                        window_start      TIMESTAMPTZ NOT NULL DEFAULT now()
                     );
                     """
                 )
@@ -362,6 +372,48 @@ def db_health():
         return {"db": "error", "detail": str(e)}
 
 
+ANALYSIS_LIMIT = 50          # максимум разборов на человека за период подписки
+ANALYSIS_WINDOW_DAYS = 365   # окно, после которого счётчик обнуляется
+
+def analysis_usage_check(user_id) -> None:
+    """Проверяет лимит разборов по подписке. Бросает 429 при исчерпании. Только проверка, без увеличения."""
+    if not DATABASE_URL:
+        return
+    try:
+        row = db_execute(
+            "SELECT used, window_start FROM analysis_usage WHERE telegram_user_id = %s",
+            (int(user_id),), fetch=True,
+        )
+    except Exception:
+        return  # при сбое БД не блокируем пользователя
+    used = 0
+    if row:
+        used, window_start = row[0], row[1]
+        if window_start and (datetime.now(timezone.utc) - window_start) > timedelta(days=ANALYSIS_WINDOW_DAYS):
+            used = 0
+    if used >= ANALYSIS_LIMIT:
+        raise HTTPException(status_code=429, detail="Достигнут лимит разборов по подписке")
+
+def analysis_usage_inc(user_id) -> None:
+    """Увеличивает счётчик разборов на 1, обнуляя окно, если оно истекло."""
+    if not DATABASE_URL:
+        return
+    try:
+        db_execute(
+            """
+            INSERT INTO analysis_usage (telegram_user_id, used, window_start)
+            VALUES (%s, 1, now())
+            ON CONFLICT (telegram_user_id) DO UPDATE SET
+                used = CASE WHEN now() - analysis_usage.window_start > make_interval(days => %s)
+                            THEN 1 ELSE analysis_usage.used + 1 END,
+                window_start = CASE WHEN now() - analysis_usage.window_start > make_interval(days => %s)
+                            THEN now() ELSE analysis_usage.window_start END
+            """,
+            (int(user_id), ANALYSIS_WINDOW_DAYS, ANALYSIS_WINDOW_DAYS),
+        )
+    except Exception:
+        pass
+
 @app.post("/analyze")
 async def analyze(req: AnalyzeRequest):
     # Режим нагрузочного теста: включается ТОЛЬКО если на сервере задан LOADTEST_SECRET
@@ -373,7 +425,9 @@ async def analyze(req: AnalyzeRequest):
     if len(req.prompt or "") > MAX_ANALYZE_CHARS:
         raise HTTPException(status_code=413, detail="Слишком длинный запрос")
     check_rate(user_id, "analyze", limit=15, window=300)
+    analysis_usage_check(user_id)
     text = await ask_claude(req.prompt, max_tokens=4000, model=ANALYSIS_MODEL)
+    analysis_usage_inc(user_id)
     return {"text": text or "Не удалось получить анализ."}
 
 
