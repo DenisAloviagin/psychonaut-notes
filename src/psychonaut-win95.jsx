@@ -1924,9 +1924,10 @@ const LONGTERM_QUESTIONS = [
   ["q4","Моё новое намерение на следующий период:"],
 ];
 
-function PeriodAccordion({ entries, onChange, canFinish }) {
+function PeriodAccordion({ entries, onChange, canFinish, previewLocked, isPremium, onUpgrade, onGoAnalysis }) {
   const [open, setOpen] = useState(null);
   const [confirmPid, setConfirmPid] = useState(null);
+  const [doneHint, setDoneHint] = useState(false);
 
   function finishPeriod(pid) {
     const ex = entries.find(e => e.period === pid);
@@ -1957,12 +1958,20 @@ function PeriodAccordion({ entries, onChange, canFinish }) {
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+      {doneHint && (
+        <MessageBox title="Период завершён"
+          message="Период завершён. Теперь можно заказать новый разбор во вкладке «Анализ»."
+          confirmLabel={isPremium ? "К анализу" : "Открыть доступ"}
+          cancelLabel="Позже"
+          onConfirm={() => { setDoneHint(false); if (isPremium) { onGoAnalysis && onGoAnalysis(); } else { onUpgrade && onUpgrade(); } }}
+          onCancel={() => setDoneHint(false)} />
+      )}
       {PERIODS.map(([pid, label, hint], i) => {
         const entry = entries.find(e => e.period === pid) || {};
         const hasContent = entry.q1||entry.q2||entry.q3||entry.q4;
         const isOpen = open === pid;
         const prevEntry = i > 0 ? entries.find(e => e.period === PERIODS[i-1][0]) : null;
-        const unlocked = i === 0 || !!(prevEntry && prevEntry.done) || !!hasContent || !!entry.done;
+        const unlocked = previewLocked ? false : (i === 0 || !!(prevEntry && prevEntry.done) || !!hasContent || !!entry.done);
         if (!unlocked) {
           return (
             <div key={pid}>
@@ -1971,7 +1980,7 @@ function PeriodAccordion({ entries, onChange, canFinish }) {
                 <span style={{ fontSize:14, flexShrink:0 }}>🔒</span>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontWeight:700, fontSize:14, lineHeight:1.15 }}>{label}</div>
-                  <div style={{ fontSize:11, color:"#808080", marginTop:1, lineHeight:1.3 }}>Откроется, когда завершишь предыдущий период</div>
+                  <div style={{ fontSize:11, color:"#808080", marginTop:1, lineHeight:1.3 }}>{previewLocked ? "Откроется в разделе «Интеграция», когда пройдёт время" : "Откроется, когда завершишь предыдущий период"}</div>
                 </div>
               </div>
             </div>
@@ -2025,7 +2034,7 @@ function PeriodAccordion({ entries, onChange, canFinish }) {
                       <MessageBox title="Завершить период"
                         message="После завершения этот период изменить будет нельзя. Откроется следующий период и станет доступен новый разбор. Завершить?"
                         confirmLabel="Завершить" cancelLabel="Отмена"
-                        onConfirm={() => { finishPeriod(pid); setConfirmPid(null); }}
+                        onConfirm={() => { finishPeriod(pid); setConfirmPid(null); setDoneHint(true); }}
                         onCancel={() => setConfirmPid(null)} />
                     ) : (
                       <Btn onClick={() => setConfirmPid(pid)} style={{ marginTop:4 }}>Завершить период</Btn>
@@ -2043,9 +2052,9 @@ function PeriodAccordion({ entries, onChange, canFinish }) {
   );
 }
 
-function StepLongterm({ data, onChange, onFinish, onFinishFree, onBack, isPremium, onUpgrade }) {
+function StepLongterm({ data, onChange, onFinish, onFinishFree, onFinishAnalyze, onBack, isPremium, onUpgrade }) {
   const s = data;
-  const [confirmFinish, setConfirmFinish] = useState(false);
+  const [confirmMode, setConfirmMode] = useState(null);
   const entries = s.longterm || [{ date: new Date().toLocaleDateString("ru-RU"), q1:"", q2:"", q3:"", q4:"" }];
   const setEntry = (i, k, v) => {
     const next = entries.map((e, idx) => idx===i ? { ...e, [k]:v } : e);
@@ -2066,19 +2075,31 @@ function StepLongterm({ data, onChange, onFinish, onFinishFree, onBack, isPremiu
 
       <PeriodAccordion
         entries={entries}
+        previewLocked={true}
         onChange={(next) => onChange({ ...s, longterm: next })}
       />
 
+      <div style={{ fontSize:12, color:"#555", lineHeight:1.6, marginTop:10 }}>
+        Периоды интеграции откроются по очереди со временем в разделе «Интеграция». Сейчас можно завершить сессию и сразу разобрать сам опыт.
+      </div>
 
-        <div style={{ height:8 }} />
-        {confirmFinish ? (
-          <MessageBox title="Завершить сессию"
-            message="После завершения данные сессии изменить будет нельзя. Дописывать можно будет только в долгосрочную интеграцию по периодам. Завершить?"
-            confirmLabel="Завершить" cancelLabel="Отмена"
-            onConfirm={onFinishFree} onCancel={() => setConfirmFinish(false)} />
-        ) : (
-          <Btn onClick={() => setConfirmFinish(true)}>Завершить</Btn>
-        )}
+      <div style={{ height:10 }} />
+      {confirmMode === "finish" ? (
+        <MessageBox title="Завершить сессию"
+          message="После завершения данные сессии изменить будет нельзя. Дописывать можно будет только долгосрочную интеграцию по периодам. Завершить?"
+          confirmLabel="Завершить" cancelLabel="Отмена"
+          onConfirm={onFinishFree} onCancel={() => setConfirmMode(null)} />
+      ) : confirmMode === "analyze" ? (
+        <MessageBox title="Завершить и разобрать"
+          message="Сессия будет завершена, и откроется разбор этого опыта. Завершить?"
+          confirmLabel="Завершить" cancelLabel="Отмена"
+          onConfirm={onFinishAnalyze} onCancel={() => setConfirmMode(null)} />
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <Btn onClick={() => setConfirmMode("analyze")}>Завершить и заказать разбор</Btn>
+          <Btn onClick={() => setConfirmMode("finish")}>Завершить</Btn>
+        </div>
+      )}
     </Screen>
   );
 }
@@ -2532,7 +2553,7 @@ function buildPrompt(session, lockerThoughts = []) {
 
 Вопросы для углубления. Всегда. Два-три конкретных вопроса, выросших из его текста.
 
-После вопросов, без заголовка, заверши разбор тёплым живым прощанием в два-три предложения, привязанным к намерению, вопросу или сути опыта именно этого человека, не шаблонным. Последней строкой спокойная подпись с мягким приглашением, без оправданий и без обесценивания разбора: что это разбор от «Заметок психонавта», и если захочется обсудить или пойти глубже, есть чат пользователей приложения и специалисты по интеграции в разделе «Интеграция». Живая поддержка это возможность пойти дальше, а не знак, что разбора недостаточно.
+После вопросов, без заголовка, заверши разбор тёплым живым прощанием в два-три предложения, привязанным к намерению, вопросу или сути опыта именно этого человека, не шаблонным. Последней строкой спокойная подпись с мягким приглашением, без оправданий и без обесценивания разбора: что это разбор от «Заметок психонавта», и если захочется обсудить или пойти глубже, в приложении есть специалисты по интеграции, а в разделе «Обратная связь» есть чат пользователей, где можно задать вопросы. Живая поддержка это возможность пойти дальше, а не знак, что разбора недостаточно.
 
 Объём определяется соразмерностью, жёсткого лимита нет: короткие и лёгкие записи дают короткий разбор, глубокие дают глубокий. Заверши ответ целиком и доведи последнюю мысль до конца, никогда не обрывай на полуслове.
 
@@ -2690,6 +2711,7 @@ async function runAnalysis(session, lockerThoughts = []) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt: buildPrompt(session, lockerThoughts), initData: tgInitData() }),
   });
+  if (response.status === 429) { const e = new Error("limit"); e.code = "limit"; throw e; }
   if (!response.ok) throw new Error("API error");
   const data = await response.json();
   return data.text || "Не удалось получить анализ.";
@@ -2697,7 +2719,7 @@ async function runAnalysis(session, lockerThoughts = []) {
 
 
 // ── Longterm Editor (editable in SessionDetail) ───────────────────────────────
-function LongtermEditor({ session, onUpdateSession, isPremium, onUpgrade }) {
+function LongtermEditor({ session, onUpdateSession, isPremium, onUpgrade, onGoAnalysis }) {
   const uid = () => Math.random().toString(36).slice(2);
   const entries = session.longterm || [];
 
@@ -2725,6 +2747,9 @@ function LongtermEditor({ session, onUpdateSession, isPremium, onUpgrade }) {
       <PeriodAccordion
         entries={entries}
         canFinish={session.status === "done"}
+        isPremium={isPremium}
+        onUpgrade={onUpgrade}
+        onGoAnalysis={onGoAnalysis}
         onChange={(next) => onUpdateSession({ ...session, longterm: next })}
       />
     </div>
@@ -2765,7 +2790,7 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
       } catch (e) {}
       setStatus("idle");
     } catch (e) {
-      setStatus("error");
+      setStatus(e && e.code === "limit" ? "limit" : "error");
     }
   }
 
@@ -2817,6 +2842,7 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
             <HourGlass size={32} />
             <div style={{ fontWeight:700, fontSize:15, color:"#000", marginTop:8 }}>Обработка…</div>
             <div style={{ fontSize:13, color:"#555", marginTop:4 }}>Анализирую паттерны в твоих записях</div>
+            <div style={{ fontSize:12, color:T.accent, fontWeight:700, marginTop:12, lineHeight:1.5, padding:"0 6px" }}>Не закрывай и не сворачивай приложение, пока идёт разбор. Он придёт сюда и в личку от бота.</div>
           </div>
         </Card>
       )}
@@ -2830,6 +2856,13 @@ function AnalysisTab({ session, isPremium, onUpgrade, onSaveAnalysis, locker = [
           </Card>
           <Btn onClick={handleAnalyze}>Попробовать снова</Btn>
         </div>
+      )}
+
+      {status === "limit" && (
+        <Card>
+          <div style={{ fontSize:13, color:T.accent, fontWeight:700, marginBottom:6, fontFamily:"'Montserrat', sans-serif" }}>Достигнут лимит разборов</div>
+          <div style={{ fontSize:13, color:T.mid, lineHeight:1.7, fontFamily:"'Montserrat', sans-serif" }}>Ты использовал все разборы, доступные по подписке в этом периоде. Новые станут доступны в следующем периоде подписки.</div>
+        </Card>
       )}
 
       {status === "idle" && pending && (
@@ -3107,8 +3140,8 @@ function Fld({ label, value }) {
   );
 }
 
-function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, onUpdateSession, onDelete, locker }) {
-  const [tab, setTab] = useState(null);
+function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, onUpdateSession, onDelete, locker, initialTab }) {
+  const [tab, setTab] = useState(initialTab || null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const tabs = [
@@ -3227,7 +3260,7 @@ function SessionDetail({ session, isPremium, onBack, onUpgrade, onSaveAnalysis, 
       )}
 
       {tab==="longterm" && (
-        <LongtermEditor session={session} onUpdateSession={onUpdateSession} isPremium={isPremium} onUpgrade={onUpgrade} />
+        <LongtermEditor session={session} onUpdateSession={onUpdateSession} isPremium={isPremium} onUpgrade={onUpgrade} onGoAnalysis={() => setTab("analysis")} />
       )}
 
       {tab==="analysis" && (
@@ -5567,6 +5600,7 @@ export default function App() {
   const [journalView, setJournalView] = useState("list");
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
+  const [sessionInitialTab, setSessionInitialTab] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
   const [locker, setLocker] = useState([]);
   const [sketchOpen, setSketchOpen] = useState(false);
@@ -5823,7 +5857,7 @@ export default function App() {
     finishSession();
   }
 
-  async function finishSession(premiumOverride) {
+  async function finishSession(premiumOverride, openAnalysis) {
     draftIdRef.current = null;
     if (draftSaveTimer.current) { clearTimeout(draftSaveTimer.current); draftSaveTimer.current = null; }
     const existingId = draftId || uid();
@@ -5836,7 +5870,7 @@ export default function App() {
         : [s, ...prev]);
       setDraftId(null);
       try { sessionStorage.removeItem("flowData"); sessionStorage.removeItem("flowStep"); } catch {}
-      setJournalView("list");
+      if (openAnalysis) { setJournalView("upgrade"); } else { setJournalView("list"); }
       return;
     }
     try {
@@ -5873,7 +5907,13 @@ ${facetTexts}
       sessionStorage.removeItem("flowData");
       sessionStorage.removeItem("flowStep");
     } catch {}
-    setJournalView("list");
+    if (openAnalysis) {
+      setSessionInitialTab("analysis");
+      setActiveSession(s);
+      setJournalView("detail");
+    } else {
+      setJournalView("list");
+    }
   }
 
   function handleDeleteAll() {
@@ -5913,13 +5953,13 @@ ${facetTexts}
         <JournalList sessions={sessions} isPremium={isPremium}
           onNew={startNew}
           onLocker={() => setJournalView("locker")}
-          onOpen={s => { setActiveSession(s); setJournalView("detail"); }}
+          onOpen={s => { setSessionInitialTab(null); setActiveSession(s); setJournalView("detail"); }}
           onResume={resumeDraft}
           onUpgrade={() => setJournalView("upgrade")}
           onPrivacy={() => setJournalView("privacy")} />
       )}
       {tab === "journal" && journalView === "detail" && activeSession && (
-        <SessionDetail session={activeSession} isPremium={isPremium} locker={locker}
+        <SessionDetail session={activeSession} isPremium={isPremium} locker={locker} initialTab={sessionInitialTab}
           onBack={() => setJournalView("list")}
           onUpgrade={() => setJournalView("upgrade")}
           onSaveAnalysis={(entry) => {
@@ -5972,7 +6012,7 @@ ${facetTexts}
           {flowStep === 4 && <StepModes data={flowData} onChange={saveFlowData} onNext={() => saveFlowStep(5)} onBack={() => saveFlowStep(3)} />}
           {flowStep === 5 && <StepFacetsNav data={flowData} onFacet={k => setActiveFacet(k)} onNext={() => saveFlowStep(6)} onSkip={() => saveFlowStep(6)} onBack={() => saveFlowStep(4)} />}
           {flowStep === 6 && <StepRating data={flowData} onChange={saveFlowData} onFinish={() => saveFlowStep(7)} onBack={() => saveFlowStep(5)} />}
-          {flowStep === 7 && <StepLongterm data={flowData} onChange={saveFlowData} onFinish={finishSessionWithUpgrade} onFinishFree={finishSession} onBack={() => saveFlowStep(6)} isPremium={isPremium} onUpgrade={() => setJournalView("upgrade_from_flow")} />}
+          {flowStep === 7 && <StepLongterm data={flowData} onChange={saveFlowData} onFinish={finishSessionWithUpgrade} onFinishFree={finishSession} onFinishAnalyze={() => finishSession(undefined, true)} onBack={() => saveFlowStep(6)} isPremium={isPremium} onUpgrade={() => setJournalView("upgrade_from_flow")} />}
         </>
       )}
       {tab === "journal" && journalView === "new" && activeFacet && (
