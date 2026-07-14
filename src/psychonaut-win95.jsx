@@ -4884,7 +4884,10 @@ function CrisisPage() {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 let nextId = 1;
-const uid = () => ++nextId;
+let idCounter = 0;
+// Номер сессии обязан быть уникальным: время создания в миллисекундах, счётчик и случайность.
+// Раньше счётчик сбрасывался при запуске, и новая сессия могла получить номер старой и затереть её.
+const uid = () => Date.now() * 100000 + (idCounter++ % 1000) * 100 + Math.floor(Math.random() * 100);
 
 
 
@@ -5652,7 +5655,11 @@ export default function App() {
           }
         }
         if (!cancelled) {
-          if (arr.length) setSessions(arr);
+          // Убираем возможные дубли по номеру (следствие прежней ошибки со счётчиком)
+          const seen = new Set();
+          const uniq = [];
+          for (const sn of arr) { const k = String(sn.id); if (seen.has(k)) continue; seen.add(k); uniq.push(sn); }
+          if (uniq.length) setSessions(uniq);
           // Сдвигаем счётчик id за максимальный сохранённый, чтобы не затирать старые сессии
           const maxId = arr.reduce((m, sn) => (typeof sn.id === "number" && sn.id > m ? sn.id : m), nextId);
           nextId = maxId;
