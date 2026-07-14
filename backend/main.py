@@ -73,6 +73,7 @@ VERIFY_INIT_DATA = os.environ.get("VERIFY_INIT_DATA", "true").lower() != "false"
 
 CLAUDE_URL = "https://api.anthropic.com/v1/messages"
 CLAUDE_MODEL = "claude-sonnet-4-6"
+ANALYSIS_MODEL = "claude-opus-4-8"  # старшая модель для глубокого разбора; оценки граней остаются на средней
 
 app = FastAPI()
 
@@ -278,7 +279,7 @@ async def tg_send_document(chat_id, text: str, filename: str = "Разбор.txt
 
 
 # ── Запрос к Claude ─────────────────────────────────────────────────────────────
-async def ask_claude(prompt: str, max_tokens: int) -> str:
+async def ask_claude(prompt: str, max_tokens: int, model: str = None) -> str:
     if not CLAUDE_API_KEY:
         raise HTTPException(status_code=500, detail="CLAUDE_API_KEY not set")
     headers = {
@@ -287,7 +288,7 @@ async def ask_claude(prompt: str, max_tokens: int) -> str:
         "content-type": "application/json",
     }
     body = {
-        "model": CLAUDE_MODEL,
+        "model": model or CLAUDE_MODEL,
         "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": prompt}],
     }
@@ -372,7 +373,7 @@ async def analyze(req: AnalyzeRequest):
     if len(req.prompt or "") > MAX_ANALYZE_CHARS:
         raise HTTPException(status_code=413, detail="Слишком длинный запрос")
     check_rate(user_id, "analyze", limit=15, window=300)
-    text = await ask_claude(req.prompt, max_tokens=4000)
+    text = await ask_claude(req.prompt, max_tokens=4000, model=ANALYSIS_MODEL)
     return {"text": text or "Не удалось получить анализ."}
 
 
