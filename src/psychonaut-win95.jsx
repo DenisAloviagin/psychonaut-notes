@@ -5539,11 +5539,26 @@ export default function App() {
   const [draftId, setDraftId] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const persistedRef = useRef({});
+  const persistSeqRef = useRef(0);
+  const sessionsRef = useRef([]);
   // Черновик: рефы и автосейв в постоянное хранилище (CloudStorage), не только во временную память
   const flowDataRef = useRef(flowData);
   const flowStepRef = useRef(flowStep);
   const draftIdRef = useRef(null);
   const draftSaveTimer = useRef(null);
+  async function removeSessionStorage(id) {
+    try {
+      const key = NOTE_PREFIX + id;
+      const manifest = await storeGet(key);
+      if (manifest && manifest.indexOf(CHUNK_TAG) === 0) {
+        const n = parseInt(manifest.slice(CHUNK_TAG.length), 10) || 0;
+        for (let i = 0; i < n; i++) await storeRemove(key + "__c" + i);
+      }
+      await storeRemove(key);
+      delete persistedRef.current[String(id)];
+    } catch (e) {}
+  }
+
   function persistDraftNow() {
     const id = draftIdRef.current;
     if (!id) return;
@@ -5677,9 +5692,14 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // Сохранение сессий при любом изменении (только после загрузки)
+  // Сохранение сессий при любом изменении (только после загрузки).
+  // ВАЖНО: только запись, никакого удаления здесь. Удаление ключей делается
+  // отдельно при ручном удалении сессии, иначе запоздавший асинхронный запуск
+  // мог стереть только что созданную сессию.
   useEffect(() => {
     if (!loaded) return;
+    sessionsRef.current = sessions;
+    const mySeq = ++persistSeqRef.current;
     (async () => {
       for (const s of sessions) {
         const json = JSON.stringify(s);
@@ -5688,15 +5708,11 @@ export default function App() {
           if (ok) persistedRef.current[String(s.id)] = json;
         }
       }
-      const ids = sessions.map(s => s.id);
-      await storeSet(INDEX_KEY, JSON.stringify(ids));
-      const idStrs = ids.map(String);
-      const keys = await storeKeys();
-      for (const k of keys) {
-        if (k.indexOf(NOTE_PREFIX) === 0) {
-          const kid = k.slice(NOTE_PREFIX.length).split("__c")[0];
-          if (!idStrs.includes(kid)) { await storeRemove(k); delete persistedRef.current[kid]; }
-        }
+      // Индекс пишет только самый свежий запуск и по самому свежему списку,
+      // чтобы устаревший запуск не затёр индекс старыми данными.
+      if (mySeq === persistSeqRef.current) {
+        const ids = sessionsRef.current.map(s => s.id);
+        await storeSet(INDEX_KEY, JSON.stringify(ids));
       }
     })();
   }, [sessions, loaded]);
@@ -5870,9 +5886,11 @@ ${facetTexts}
             setActiveSession(updated);
           }}
           onDelete={() => {
-            setSessions(prev => prev.filter(s => s.id !== activeSession.id));
+            const delId = activeSession.id;
+            setSessions(prev => prev.filter(s => s.id !== delId));
             setActiveSession(null);
             setJournalView("list");
+            removeSessionStorage(delId);
           }} />
       )}
       {tab === "journal" && journalView === "upgrade" && (
