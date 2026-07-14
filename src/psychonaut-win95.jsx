@@ -169,40 +169,55 @@ function utf8Chunks(str, maxBytes) {
   if (cur) chunks.push(cur);
   return chunks.length ? chunks : [""];
 }
+// Прямой доступ к локальной памяти (синхронно) и к облаку (асинхронно) по отдельности.
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } }
+function lsRemove(k) { try { localStorage.removeItem(k); } catch {} }
+function cloudGet(k) { return new Promise((r) => { const c = tgCloud(); if (c) { try { c.getItem(k, (e, v) => r(e ? null : (v || null))); } catch { r(null); } } else r(null); }); }
+function cloudSet(k, v) { return new Promise((r) => { const c = tgCloud(); if (c) { try { c.setItem(k, v, () => r(true)); } catch { r(false); } } else r(false); }); }
+function cloudRemove(k) { return new Promise((r) => { const c = tgCloud(); if (c) { try { c.removeItem(k, () => r(true)); } catch { r(true); } } else r(true); }); }
+
 async function storeSetBig(key, value) {
   value = String(value == null ? "" : value);
+  // 1) Локально одним ключом: атомарно, синхронно, без нарезки. Пересохранение не может порвать сессию.
+  lsSet(key, value);
+  // 2) В облако нарезкой для синхронизации между устройствами (вторично, best-effort).
   try {
-    const prev = await storeGet(key);
+    const prev = await cloudGet(key);
     if (prev && prev.indexOf(CHUNK_TAG) === 0) {
       const pn = parseInt(prev.slice(CHUNK_TAG.length), 10) || 0;
-      for (let i = 0; i < pn; i++) await storeRemove(key + "__c" + i);
+      for (let i = 0; i < pn; i++) await cloudRemove(key + "__c" + i);
     }
   } catch (e) {}
   const parts = utf8Chunks(value, CHUNK_BYTES);
-  if (parts.length <= 1) {
-    return await storeSet(key, parts[0]);
-  }
-  let ok = true;
-  for (let i = 0; i < parts.length; i++) {
-    const r = await storeSet(key + "__c" + i, parts[i]);
-    ok = ok && r;
-  }
-  const m = await storeSet(key, CHUNK_TAG + parts.length);
-  return ok && m;
+  if (parts.length <= 1) { await cloudSet(key, parts[0]); return true; }
+  for (let i = 0; i < parts.length; i++) await cloudSet(key + "__c" + i, parts[i]);
+  await cloudSet(key, CHUNK_TAG + parts.length);
+  return true;
 }
 async function storeGetBig(key) {
-  const v = await storeGet(key);
-  if (v && v.indexOf(CHUNK_TAG) === 0) {
-    const n = parseInt(v.slice(CHUNK_TAG.length), 10) || 0;
-    let out = "";
-    for (let i = 0; i < n; i++) {
-      const part = await storeGet(key + "__c" + i);
-      if (part == null) return null;
-      out += part;
-    }
-    return out;
+  // 1) Целая локальная копия нового формата, приоритет, её нельзя собрать наполовину.
+  const localWhole = lsGet(key);
+  if (localWhole !== null && localWhole.indexOf(CHUNK_TAG) !== 0) return localWhole;
+  // 2) Локальный манифест старого формата: собрать из локальных кусков.
+  if (localWhole !== null && localWhole.indexOf(CHUNK_TAG) === 0) {
+    const n = parseInt(localWhole.slice(CHUNK_TAG.length), 10) || 0;
+    let out = ""; let okAll = true;
+    for (let i = 0; i < n; i++) { const p = lsGet(key + "__c" + i); if (p == null) { okAll = false; break; } out += p; }
+    if (okAll) return out;
   }
-  return v;
+  // 3) Иначе собираем из облака (например, на новом устройстве).
+  const manifest = await cloudGet(key);
+  if (manifest == null) return null;
+  if (manifest.indexOf(CHUNK_TAG) !== 0) return manifest;
+  const n = parseInt(manifest.slice(CHUNK_TAG.length), 10) || 0;
+  let out = "";
+  for (let i = 0; i < n; i++) {
+    const part = await cloudGet(key + "__c" + i);
+    if (part == null) return null;
+    out += part;
+  }
+  return out;
 }
 
 // ── Emoji через Twemoji (цветные картинки вместо чёрных системных) ────────────
@@ -5580,12 +5595,13 @@ export default function App() {
   async function removeSessionStorage(id) {
     try {
       const key = NOTE_PREFIX + id;
-      const manifest = await storeGet(key);
+      lsRemove(key);
+      const manifest = await cloudGet(key);
       if (manifest && manifest.indexOf(CHUNK_TAG) === 0) {
         const n = parseInt(manifest.slice(CHUNK_TAG.length), 10) || 0;
-        for (let i = 0; i < n; i++) await storeRemove(key + "__c" + i);
+        for (let i = 0; i < n; i++) await cloudRemove(key + "__c" + i);
       }
-      await storeRemove(key);
+      await cloudRemove(key);
       delete persistedRef.current[String(id)];
     } catch (e) {}
   }
